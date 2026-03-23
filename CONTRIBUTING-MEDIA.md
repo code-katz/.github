@@ -2,7 +2,11 @@
 
 ## 1. Clone the repo
 
+Create a `code-katz` folder first, then clone from inside it:
+
 ```bash
+mkdir -p code-katz
+cd code-katz
 git clone https://github.com/code-katz/.github.git
 cd .github
 ```
