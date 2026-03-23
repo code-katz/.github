@@ -4,6 +4,8 @@
 
 **Specialists, memory, and direction for Claude Code.**
 
+![License](https://img.shields.io/badge/license-MIT-blue) ![Works with Claude Code](https://img.shields.io/badge/works%20with-Claude%20Code-8A2BE2)
+
 Open-source extensions that give Claude Code named expert personas, persistent decision logs, living roadmaps, plan archives, lightweight task capture, and a publish pipeline — so every session picks up where the last one left off.
 
 ---
