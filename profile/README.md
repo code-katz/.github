@@ -12,7 +12,7 @@ Open-source extensions that give Claude Code named expert personas, persistent d
 
 | Tool | What it does |
 |---|---|
-| [claude-team-cli](https://github.com/code-katz/claude-team-cli) | Ten specialist personas — product, backend, frontend, security, data, DevOps, QA, marketing, analytics, and PM. Each thinks differently. |
+| [claude-team-cli](https://github.com/code-katz/claude-team-cli) | Eleven specialist personas — product, backend, frontend, security, data, DevOps, QA, marketing, analytics, PM, and business. Each thinks differently. |
 | [claude-devlog-skill](https://github.com/code-katz/claude-devlog-skill) | Maintains a DEVLOG.md of decisions, milestones, and reasoning that survive session boundaries. Stop re-explaining what you already decided. |
 | [claude-roadmap-skill](https://github.com/code-katz/claude-roadmap-skill) | Maintains a ROADMAP.md with live priorities and an append-only revision history. Every deferral has a reason. |
 | [claude-plans-skill](https://github.com/code-katz/claude-plans-skill) | Archives Claude Code plans to a named, indexed, searchable collection. Find that plan you wrote three months ago. |
