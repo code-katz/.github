@@ -46,7 +46,7 @@ pipx install claude-publish-agent
 
 Built by an engineer working on large-scale systems who got tired of re-explaining the same decisions every Claude session. The devlog started as a workaround. The team personas started as an experiment. Now it's a toolkit that makes Claude Code sessions cumulative instead of disposable.
 
-Read the full series on [Medium](https://medium.com/@willcurran_25348).
+Read the full series on [Medium](https://medium.com/@will-s-curran).
 
 ---
 
