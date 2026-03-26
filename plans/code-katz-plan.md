@@ -189,7 +189,7 @@ Team-cli has 12 posts (10 personas + intro + skills recap). Skills are single-pu
 
 | Post | Title | Words | Status |
 |---|---|---|---|
-| D-1 | "Stop Rebuilding Context" | 800-1000 | Draft exists in `gtm.md` — edit and publish |
+| D-1 | "Stop Rebuilding Context" | 800-1000 | **Published** 2026-03-26 |
 | D-2 | "The Devlog Entry That Saved Me a Week" | 600-800 | New — real-world narrative proof-of-value |
 
 #### claude-roadmap-skill (2 posts)
