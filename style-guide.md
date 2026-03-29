@@ -8,11 +8,12 @@
 
 ### 1.1 Suite Name
 
-The six projects form a single suite under the **Code Katz** brand (`codekatz.com`). Each project retains its own name but shares this visual identity.
+The seven projects form a single suite under the **Code Katz** brand (`codekatz.com`). Each project retains its own name but shares this visual identity.
 
 | Project | Short Label | Accent Color | Role |
 |---|---|---|---|
 | `claude-team-cli` | **Team CLI** | Rust Orange `#d97757` | Multi-agent orchestration from the terminal |
+| `claude-conductor` | **Conductor** | Amber Gold `#d4a843` | Coordinate parallel Claude Code sessions |
 | `claude-devlog-skill` | **Devlog Skill** | Slate Blue `#6a9bcc` | Structured development changelog skill |
 | `claude-roadmap-skill` | **Roadmap Skill** | Sage Green `#788c5d` | Project planning and roadmap skill |
 | `claude-publish-agent` | **Publish Agent** | Muted Purple `#8b7eb8` | Publish markdown to blogging platforms |
@@ -41,6 +42,7 @@ Each project has a designated accent for visual distinction.
 | Name | Hex | Assigned To |
 |---|---|---|
 | **Rust Orange** | `#d97757` | `claude-team-cli` |
+| **Amber Gold** | `#d4a843` | `claude-conductor` |
 | **Slate Blue** | `#6a9bcc` | `claude-devlog-skill` |
 | **Sage Green** | `#788c5d` | `claude-roadmap-skill` |
 | **Muted Purple** | `#8b7eb8` | `claude-publish-agent` |
@@ -64,6 +66,7 @@ Each project has a designated accent for visual distinction.
 Project names should always be rendered in **monospace** with their accent color:
 
 - `claude-team-cli` → JetBrains Mono, `#d97757`
+- `claude-conductor` → JetBrains Mono, `#d4a843`
 - `claude-devlog-skill` → JetBrains Mono, `#6a9bcc`
 - `claude-roadmap-skill` → JetBrains Mono, `#788c5d`
 - `claude-publish-agent` → JetBrains Mono, `#8b7eb8`
