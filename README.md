@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="media/logos/Icon line.png" alt="Code Katz" width="100%">
+  <img src="media/logos/icon-line.png" alt="Code Katz" width="100%">
 </p>
 
 **Specialists, memory, and direction for Claude Code.**
