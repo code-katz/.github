@@ -5,6 +5,37 @@ Auto-maintained via [claude-devlog-skill](https://github.com/code-katz/claude-de
 
 ---
 
+## [2026-09-05] `ck` plugin phase-one PRD: gates in skills, spans in workflows, no UI yet
+
+**Category:** `decision`
+**Tags:** `ck`, `plugin`, `workflows`, `personas`, `prd`, `marketplace`
+**Risk Level:** `medium`
+**Breaking Change:** `no`
+
+### Summary
+Turned the 2026-09-05 agent-workflows research proposal into a phase-one PRD for a single code-katz plugin named `ck`: 21 persona subagents generated from team-cli profiles, `/ck:panel` (three lenses on three models) and `/ck:prd` (River-led, panel-challenged) end to end, one instrumentation hook, no UI. Both documents are committed under `plans/`.
+
+### Detail
+
+- **Proposal §8 resolved.** Q2 (granularity) decides the shape: a sign-off is a gate in a skill, the only place `AskUserQuestion` exists; each span between gates that needs fan-out is one plugin workflow; single-agent spans run inline. Docs quote: "For sign-off between stages, run each stage as its own workflow."
+- **Fifteen corrections to the proposal** are recorded in PRD §3.3. The load-bearing ones: the plugin must be named `ck` because the command prefix is the plugin name; §5.5 (each lens on a different model) contradicts §5.6 (River, Toni, Kai all on Opus 5) and is resolved by a per-invocation override in `panel.js` only; seven personas left unassigned in §5.6 are placed on Opus 5; `TaskCompleted` and `Stop` hook gates are replaced by in-workflow validation; `PreModelSwitch` does not cover subagent fallback; the roster is 21, not 22.
+- **Plugin, web app, wrapper, or dashboard:** plugin. `/workflows` is the run view. A phase-two `/ck:map` renders the catalog from workflow `meta`. A workbench, if ever, is local: the viewer may read from files, the editor must run the generator and tests before a commit. Never a hosted app with its own store of definitions.
+- **Harness facts** were verified against code.claude.com docs and the pricing page on 2026-09-05. Sonnet 5's scheduled price increase was cancelled, so $2/$10 stands.
+
+### Decisions Made
+- **Marketplace publishing superseded for `ck` only.** team-cli's 2026-07-31 retirement stands for team-cli. `ck` accepts the two-character prefix because workflows and subagents need no shell CLI, and `/akira`, `launch`, and `session` stay on team-cli's install path.
+- **Coexist, not retire.** `ck` is additive. Revisit at 90 days with the usage log the plugin ships.
+- **All 21 personas port now; prune on evidence.** Generated from a vendored, pinned copy of team-cli profiles with a drift test. `## Required Interactive Behaviors` is rewritten mechanically to output form, because a subagent cannot ask.
+- **Tiers change upstream first.** `tiers.conf` is the single source of truth. The §5.6 re-base is a prerequisite team-cli PR; `ck` copies the value verbatim.
+- **New repo `code-katz/ck`, one plugin per repo,** as the eighth marketplace entry.
+
+### Related
+- PRD: `plans/2026-09-05-ck-plugin-prd-phase-1.md`
+- Proposal: `plans/2026-09-05-agent-workflows-research-and-proposal.md`
+- team-cli `ROADMAP.md` revision history, 2026-07-29 and 2026-07-31 (superseded for `ck`)
+
+---
+
 ## [2026-03-22] Code Katz marketing plan fully executed: 20 blog posts, README overhauls, org infrastructure
 
 **Category:** `milestone`
