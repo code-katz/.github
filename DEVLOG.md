@@ -5,6 +5,36 @@ Auto-maintained via [claude-devlog-skill](https://github.com/code-katz/claude-de
 
 ---
 
+## [2026-09-05] `ck` PRD revised after a cross-model panel: nine changes adopted, eleven rejected with reasons; review pages become the feedback channel
+
+**Category:** `decision`
+**Tags:** `ck`, `prd`, `panel`, `cross-model-review`, `user-2`, `review-pages`
+**Risk Level:** `medium`
+**Breaking Change:** `no`
+
+### Summary
+Will shared a PRD for the same plugin written by Opus, with a hand-run panel brief and five workbench mockups. Fable took the brief's engineering lens and verified the Opus PRD's load-bearing claims against the docs and the repos. Result: the `ck` PRD stays the base; nine changes are ported from the Opus PRD; eleven of its claims are rejected with the reason recorded. Will's new rule for feedback (review pages with comments; mockups as labeled variants) is written into the PRD. Record: `plans/2026-09-05-ck-prd-panel-memo.md`.
+
+### Detail
+
+- **Biggest finding against the `ck` PRD:** it named Will's wife as customer zero and then designed for Will (a ten-question interview, model names in a prompt, a hidden run directory). The Opus PRD made her the harder constraint. The `ck` PRD now has a users table, her journey, three failure rules (no stack trace, model name, or token count; always name the file holding the work; always one next action), and a done criterion: she produces a PRD on a new project without a text editor or `.ck/`.
+- **Shape changes:** `/ck:brief` added before `/ck:prd`; the interview is optional; the review is a page with comments or a file edit; documents live at fixed committed paths (`docs/brief.md`, `docs/PRD.md`, `docs/decisions/`); the run directory is a cache; workflows accept a start-at stage; `/ck:next` promoted to phase one; a Phase 0 of six spikes; each panel lens reads its own evidence and sees the author's rationale only after forming a view; effort is set per workflow stage, never per persona.
+- **Verified errors in the Opus PRD:** it says workflows cannot call workflows (they can, one level); it pauses a running workflow to ask about escalation (workflows accept no mid-run input, and its own principle P6 says so); its quota fallback hangs on a hook that fires only on a requested session model switch; its gates use the wrong hook for subagents; it retires team-cli at Phase 1 in one place and Phase 5 in another; it counts 22 personas (21); it retires `TODOS.md`, a shipped plugin; its workbench edits the installed plugin copy, which updates overwrite; it ignores conductor's existing cost parser.
+- **Panel health:** one lens ran, so no agreement rate. The memo follows the brief's format anyway so the gaps show.
+
+### Decisions Made
+- **Base document: the `ck` PRD.** Engineering-complete, verified, family-aware. Product thinking ported from Opus.
+- **The artifact is the state.** Fixed, conventional, committed paths; the plugin keeps nothing the deliverable depends on.
+- **Review pages are the feedback channel** (Will's rule). A private page with comments per review; Claude holds and resolves every comment after "done"; mockups as labeled variants side by side; a file-edit path always remains.
+- **`PreModelSwitch` arbitration: answered no.** Recorded as Phase 0 spike S6 with the docs citation, so it is not re-litigated.
+
+### Related
+- Panel memo: `plans/2026-09-05-ck-prd-panel-memo.md`
+- Opus inputs, verbatim: `plans/opus/`
+- Revised PRD: `plans/2026-09-05-ck-plugin-prd-phase-1.md`
+
+---
+
 ## [2026-09-05] `ck` plugin phase-one PRD: gates in skills, spans in workflows, no UI yet
 
 **Category:** `decision`
