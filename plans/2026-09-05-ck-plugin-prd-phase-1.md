@@ -26,7 +26,7 @@ Every claim carries the proposal's grade, plus one more:
 
 ### 0.2 What this document is
 
-The proposal is a research summary with a proposed shape. This is the specification for the first slice of that shape: what ships, what each piece must do, how it is tested, and what is deliberately left out. It contains acceptance criteria, schemas, and the full text of the two workflow scripts and two skills, as appendices.
+The proposal is a research summary with a proposed shape. This is the specification for the first slice of that shape: what ships, what each piece must do, how it is tested, and what is deliberately left out. It contains acceptance criteria, schemas, and the full text of the three workflow scripts, three skills, and the brief-and-PRD contract, as appendices.
 
 ### 0.3 The three answers up front
 
