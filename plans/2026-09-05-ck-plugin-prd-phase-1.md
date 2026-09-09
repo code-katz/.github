@@ -309,7 +309,7 @@ Three persona tiers and two stage tiers. The persona sets the model floor; the w
 
 | Agent kind | Model comes from | Effort comes from | Who may override the model |
 |---|---|---|---|
-| Persona agent (`agentType: 'ck:<name>'`) | Frontmatter `model:` from `ck/tiers.conf` | The script, per stage; omitted means the session's effort | `panel.js` only, and only downward, for lens decorrelation |
+| Persona agent (`agentType: 'ck:<name>'`) | Frontmatter `model:` from `ck/tiers.conf` | The script, per stage: the draft and rewrite stages and the memo synthesis run at `medium` (drill 5c showed the author stages spending most of a run's tokens on turns, not on the document); omitted means the session's effort | `panel.js` only, and only downward, for lens decorrelation |
 | Neutral utility agent (no `agentType`) | The script | The script: validators at `low`, researchers at `medium` | The script |
 | The main session (gates, `/ck:next`, finalize, switch skills) | The user's session model | The session | The user |
 
@@ -367,7 +367,7 @@ Rules:
 
 1. One page per review, republished in place; never a new URL for a revision.
 2. When the reviewer says "done", Claude reads every thread, applies each change to the file on disk (the document is the state, §4.3), republishes, and resolves each thread with one line saying what changed. A comment Claude will not act on gets a reply with the reason and stays open. A thread not sent to Claude is applied and reported in chat, because it cannot be replied to or resolved.
-3. Document pages render the document with a sticky table of contents, so a comment can point at a section.
+3. Document pages are built by `scripts/render-review.py` in one command, never by the session writing HTML: the document with a sticky table of contents, so a comment can point at a section. Drill 5c measured the hand-built page at about a third of a `/ck:prd` run's cost.
 4. Gallery pages show labeled variants (A, B, C) side by side, each with its rationale and trade-off, each commentable; the reviewer comments to pick one or ask for changes. Brand galleries and design galleries use one page shape (§7.8, §7.9).
 5. Availability, from the docs (Phase 0, S5): the Claude Code CLI 2.1.183 or later or the desktop app, signed in with `/login`, on a paid plan; reading comments needs 2.1.221 or later; replying on its own needs 2.1.228 or later; and comments are taken only on an artifact shared within a Team or Enterprise organization, so an account on a Pro or Max plan reviews by file edit. Every gate keeps that file-edit path: "Edit the file and run the command again; I'll pick up from your edits."
 
@@ -1035,7 +1035,8 @@ ck/
 │   └── design-round.js           §6.10
 ├── hooks/hooks.json              §5.5
 ├── scripts/
-│   ├── generate.sh               profiles → agents, switch skills, ROSTER.md
+│   ├── generate.sh               profiles → agents, switch skills, ROSTER.md, the roster skill
+│   ├── render-review.py          markdown → the review page, one command (§4.9); standard library only
 │   ├── usage-log.sh
 │   └── check-prereqs.sh
 └── tests/
@@ -1342,8 +1343,8 @@ const results = (await parallel(lenses.map(l => () => agent(
   `state your assumption, and proceed.\n` +
   `handoffBrief: decisions you want recorded, open risks in your domain, one direct question to a named lens.\n` +
   `Length: reasoning at most 200 words; every other text field at most 100 words. Findings, not prose.\n` +
-  `Write the same object as JSON to ${runDir}/panel/${l.persona}.json (create the directory if needed) and ` +
-  `return it with persona '${l.persona}' and lens '${l.lens}'.`,
+  `Write the same object as JSON to ${runDir}/panel/${l.persona}.json (create the directory if needed), with one ` +
+  `Write call, and return it with persona '${l.persona}' and lens '${l.lens}'.`,
   { label: `${l.lens}:${l.persona}`, phase: 'Lenses', agentType: 'ck:' + l.persona, model: l.model, schema: LENS_SCHEMA },
 )))).filter(Boolean)
 
@@ -1381,8 +1382,8 @@ const memo = await agent(
   `quote verbatim only what the sections require and summarize the rest; do not restate a lens's reasoning ` +
   `in your own words. Then return only the memo object: memoPath must be '${memoPath}'; disagreementCount ` +
   `and disagreementTopics (one line each) and killConditionsMet are counts of what you wrote; summary is at ` +
-  `most 80 words. Do not repeat the memo in the return value.`,
-  { label: 'synthesis', phase: 'Synthesis', schema: MEMO_SCHEMA },
+  `most 80 words. Do not repeat the memo in the return value. Write the whole file with one Write call; do not build it with piecemeal edits, and do not re-read it after writing. `,
+  { label: 'synthesis', phase: 'Synthesis', effort: 'medium', schema: MEMO_SCHEMA },
 )
 
 if (!memo) {
@@ -1560,7 +1561,7 @@ if (runs('draft')) {
     `author already decided; do not re-ask any of it.\n` +
     `${contractStep} It gives the section order, required fields, and the checklist your draft will be ` +
     `validated against.\n` +
-    `Write ${outPath} to that contract, all sections in this order (create the directory if needed): ` +
+    `Write ${outPath} to that contract, all sections in this order (create the directory if needed). Write the whole file with one Write call; do not build it with piecemeal edits, and do not re-read it after writing. ` +
     SECTIONS.map(s => '"' + s + '"').join(', ') + `.\n` +
     `Apply your Required Behaviors in subagent form. Leave Appendix B (the premortem) for the pass after the ` +
     `panel, and say so under its heading.\n` +
@@ -1568,7 +1569,7 @@ if (runs('draft')) {
     `panel can address it, and list those claims with their section. Put anything you would have asked the ` +
     `author under Open questions, with your assumption. Keep the document under ${A.maxWords} words.\n` +
     `Return the draft object; path must be '${outPath}'.`,
-    { label: `${A.author}:draft`, phase: 'Draft', agentType: author, schema: DRAFT_SCHEMA },
+    { label: `${A.author}:draft`, phase: 'Draft', agentType: author, effort: 'medium', schema: DRAFT_SCHEMA },
   )
   if (!draft) throw new Error(`draft: ${A.author} returned nothing for the draft`)
   log(`draft: ${draft.claims.length} tagged claim(s), ${draft.assumptions.length} assumption(s), ${draft.questions.length} open question(s)`)
@@ -1647,7 +1648,7 @@ const panelInputs = panel && panel.memoPath
 const final = await agent(
   `${contractStep} Read the inputs (${inputs.join(', ')}), ${outPath}, and ${panelInputs}.\n` +
   `Rewrite ${outPath}: the same sections, in contract order, revised where the panel showed a claim wrong or ` +
-  `unsupported, followed by two appendices.\n` +
+  `unsupported, followed by two appendices. Write the whole file with one Write call; do not build it with piecemeal edits, and do not re-read it after writing. \n` +
   `Appendix A, Challenged claims: one row per point a lens raised against a [C<n>] claim or against something ` +
   `untagged: claim | challenged by (persona and lens) | severity (blocking, major, minor: your call from the ` +
   `memo) | status | resolution. Status is upheld (you kept it; say why), revised (you changed it; quote the ` +
@@ -1658,7 +1659,7 @@ const final = await agent(
   `verbatim for the author. The review asks it.\n` +
   `Keep the document under ${A.maxWords} words. Check your own output against the contract's checklist before ` +
   `returning. List every decision you left open under openDecisions. Generated ${stamp}, run ${runId}. Return the object; path must be '${outPath}'.`,
-  { label: `${A.author}:synthesize`, phase: 'Synthesize', agentType: author, schema: FINAL_SCHEMA },
+  { label: `${A.author}:synthesize`, phase: 'Synthesize', agentType: author, effort: 'medium', schema: FINAL_SCHEMA },
 )
 if (!final) throw new Error(`draft: ${A.author} returned nothing for the synthesis; the draft is at ` + outPath)
 
@@ -1786,7 +1787,7 @@ let brief = await agent(
     ? `Comparable products, from Toni's market pass (attribute the section to it and cite its sources):\n` +
       JSON.stringify(market, null, 1) + '\n'
     : `The market pass returned nothing; write the Comparable products section as "pending" and say why.\n`) +
-  `Write ${briefPath} to that contract (create the directory if needed). Apply your Required Behaviors in ` +
+  `Write ${briefPath} to that contract (create the directory if needed). Write the whole file with one Write call; do not build it with piecemeal edits, and do not re-read it after writing. Apply your Required Behaviors in ` +
   `subagent form. Three Whys: do not accept the idea as the problem; write the chain (idea, why, why, why), ` +
   `each step more specific, until the user pain is exposed or the idea is shown to address a symptom, and say ` +
   `which. V0 Challenge: propose a first version that cuts at least half the scope, say what it cuts, and give ` +
@@ -1798,7 +1799,7 @@ let brief = await agent(
   `Return only the brief object: briefPath must be '${briefPath}'; chainSteps, comparables, and nonGoals are ` +
   `counts of what you wrote; openQuestions is the list of open questions, one line each. Do not repeat the ` +
   `document in the return value.`,
-  { label: 'river:draft', phase: 'Draft', agentType: 'ck:river', schema: BRIEF_SCHEMA },
+  { label: 'river:draft', phase: 'Draft', agentType: 'ck:river', effort: 'medium', schema: BRIEF_SCHEMA },
 )
 if (!brief) throw new Error('brief: River returned nothing')
 log(`brief: ${brief.chainSteps} step(s) in the root-cause chain, ${brief.comparables} comparable(s), ${brief.openQuestions.length} open question(s)`)
@@ -2012,7 +2013,7 @@ let team = await agent(
   `Your nominations: ${runDir}/nominations.json. The confirmations: every file under ${runDir}/confirmations/ ` +
   (silent.length ? `(${silent.join(', ')} did not answer; treat their nominations as accepted and say so). ` : '') +
   `The product documents: ${inputs.join(', ')}. ${rosterStep}\n` +
-  `Write ${teamPath} (create the directory if needed): the Cast table (persona, role, tier, why on this ` +
+  `Write ${teamPath} (create the directory if needed). Write the whole file with one Write call; do not build it with piecemeal edits, and do not re-read it after writing. The Cast table (persona, role, tier, why on this ` +
   `product); the Roles and responsibilities matrix (one row per pipeline document and stage, and per PRD ` +
   `requirement area when a PRD exists; columns owner, contributors, reviewers; exactly one owner per row); ` +
   `the Hand-off order (who hands to whom, in pipeline order, and what each hand-off carries); Needs (per ` +
