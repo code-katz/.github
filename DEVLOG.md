@@ -5,6 +5,37 @@ Auto-maintained via [claude-devlog-skill](https://github.com/code-katz/claude-de
 
 ---
 
+## [2026-09-09] `ck` PRD revision 3 after Will's review: `ck` independent, the full definition pipeline in phase one, Fable tier restored, Workbench committed as phase three
+
+**Category:** `decision`
+**Tags:** `ck`, `prd`, `review`, `clare`, `pipeline`, `model-tiers`, `workbench`
+**Risk Level:** `medium`
+**Breaking Change:** `no`
+
+### Summary
+Will reviewed revision 2 of the `ck` phase-one PRD on its review page and left sixteen comments. Revision 3 is a rewrite, not a patch: the old team tool is out of the picture, Clare is the primary user with two named journeys, every path is written against `<project-repo>`, six judgment seats return to Fable 5.1, phase one grows from four commands to the whole product-definition pipeline plus a design step, the Workbench is committed as phase three, and every review goes through Claude's built-in comment system. Each comment and the decision it drove is recorded in PRD §3.4.
+
+### Detail
+
+- **`ck` is independent.** Every coexistence and retirement passage is gone. `ck` owns `profiles/` and `tiers.conf` after a one-time import; there is no vendored copy, lock, or sync script. Uninstalling the old tool is a prerequisite, with a `SessionStart` hook that warns in plain words while it remains.
+- **Clare, not "Will's wife".** Proficient with the current tool, runs many sessions at once, and her learnings drive the rebuild. Her failure mode is inconsistency, not error text. J1 (idea to definition) and J2 (feature to design mockups, the same way every time) are the acceptance journeys; efficiency (fewer sessions and hand-offs) is a goal with a measure.
+- **Phase one is the pipeline:** `/ck:opportunity`, `/ck:market-research`, `/ck:brief` (with a market pass), `/ck:prd`, `/ck:team` (roles and responsibilities), `/ck:roadmap`, `/ck:architecture`, `/ck:brand-guide` (proposals, finalists, guide; modelled on the NIGHTGRID process and the d20Mob guide), `/ck:design`, plus `/ck:panel`, `/ck:next`, and 21 persona switch commands. Ten document contracts. One drafting engine (`draft.js`) serves the PRD and the architecture document. Four scripts written in full; five to the stage level.
+- **Models:** Fable 5.1 for River, Akira, Morgan, Sage, Jordan, Reiner; Opus 5 for the eleven craft seats; Sonnet 5 for the four execution seats; Haiku for validators. The panel default is River on Fable, Toni on Opus, Kai moved down to Sonnet; the one override moves a lens down, never up.
+- **Reviews:** Claude's built-in review and comment system, in the desktop app or at claude.ai. Every review page carries the five how-to-comment steps in its banner, because the first one did not and could not be commented on.
+- **Phase two:** `/ck:feature` (explained; open for Will to pull forward), `/ck:bugfix`, `/ck:gtm`, Routines, `/ck:map`, `/ck:report`. **Phase three:** the Workbench, a rewrite replacing the conductor dashboard, local, never a hosted store.
+
+### Decisions Made
+- **Treat `ck` as a replacement, built independently; require the old tool's removal.** Will, 2026-09-08.
+- **Fable where judgment matters, Sonnet where volume matters.** Three persona tiers; stage tiers for research, validation, and synthesis.
+- **The document is the state, under `<project-repo>/docs/`.** The cache directory holds nothing a document depends on.
+- **The Workbench will be built** as phase three, after phase one has run on a real product.
+
+### Related
+- PRD revision 3: `plans/2026-09-05-ck-plugin-prd-phase-1.md` (§3.4 for the comment-by-comment record)
+- Panel memo, §8 added for the superseded items: `plans/2026-09-05-ck-prd-panel-memo.md`
+
+---
+
 ## [2026-09-05] `ck` PRD revised after a cross-model panel: nine changes adopted, eleven rejected with reasons; review pages become the feedback channel
 
 **Category:** `decision`

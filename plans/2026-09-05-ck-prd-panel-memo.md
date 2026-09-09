@@ -28,7 +28,7 @@ Per the brief, agreement is either obviously true or a shared blind spot. Judgme
 | Composing workflows | "There is no `workflow()` primitive" | `workflow()` exists, one level deep | The harness reference. Opus is wrong |
 | Model policy | Effort first, then the Advisor, then a model switch; fallback on quota via a hook; pause mid-run to arbitrate | Tiers in agent files; one override in the panel; null-tolerant scripts; no mid-run pause | The docs: no mid-run input, and the hook fires only on a requested session switch. Opus's mechanism does not exist as described |
 | Quality gates | Hooks reject malformed output with exit code 2 | Schema-forced output plus a validator agent inside the workflow | Plugin agents ignore per-agent hooks; the subagent hook's feedback path is undocumented |
-| team-cli | Retired at Phase 1 (§1) or Phase 5 (§9) | Coexists; revisit at 90 days | Opus contradicts itself, and a plugin cannot provide the shell commands team-cli owns |
+| team-cli | Retired at Phase 1 (§1) or Phase 5 (§9) | Coexists; revisit at 90 days | Moot since 2026-09-08: Will decided `ck` is independent and the old tool must be uninstalled before use. Neither position stands (see §8) |
 | Persona roster | 22; a core of 9 that omits Alex, Morgan, Sage, Jordan while tiering them | 21, all generated from upstream, prune on evidence | The repo has 21 profiles |
 
 ## 4. Kill conditions
@@ -81,7 +81,7 @@ Will's decision, 2026-09-05: keep the `ck` PRD as the base and adopt nine change
 | W2 | Pause a running workflow to arbitrate | Workflows accept no mid-run input; contradicts its own P6 |
 | W3 | Quota fallback via `PreModelSwitch` | The hook fires on a requested session switch only |
 | W4 | Gates via `Stop` or `TaskCompleted` hooks | Wrong event for subagents; feedback path undocumented; plugin agents ignore per-agent hooks |
-| W5 | Retire team-cli at Phase 1, or Phase 5 | Contradiction; the plugin cannot provide shell commands |
+| W5 | Retire team-cli at Phase 1, or Phase 5 | Contradiction between the two sections. Superseded on 2026-09-08 by Will's decision (§8) |
 | W6 | 22 personas; a core list that omits four it tiers | The repo has 21; the split is inconsistent |
 | W7 | Retire `TODOS.md` | Out of scope; a shipped plugin |
 | W8 | `maxBudgetUsd` in agent frontmatter | Not in the documented frontmatter table |
@@ -92,3 +92,18 @@ Will's decision, 2026-09-05: keep the `ck` PRD as the base and adopt nine change
 ### Panel health
 
 Agreement rate cannot be computed from one lens. The brief's threshold ("above roughly two-thirds agreement the panel is theater") is recorded as the target for when `/ck:panel` runs this comparison properly, with three lenses that have not seen each other.
+
+## 8. Superseded by Will's review of 2026-09-08
+
+Will reviewed revision 2 of the `ck` PRD on its review page and left sixteen comments. Where they touch this memo:
+
+| Item here | What Will decided | Effect on this memo |
+|---|---|---|
+| §3 row "team-cli", W5 | `ck` is independent; the old tool must be uninstalled before use; neither retire nor coexist is a consideration | Both positions moot. The row and W5 are annotated above, not deleted |
+| §2 agreement "three lenses on Opus 5, Fable 5.1, and Sonnet 5" | Fable where judgment matters, Sonnet where volume matters: six judgment seats on Fable 5.1, eleven craft seats on Opus 5, four execution seats on Sonnet 5 | The panel default becomes River on Fable 5.1, Toni on Opus 5, Kai on Sonnet 5. The agreement stands; the assignment changed |
+| A1 "she never sees a model name" | Clare is proficient, not fragile; she runs many sessions; consistency and efficiency are her needs | Kept as house style, dropped as a hard rule. Users table rewritten around Clare (PRD §2.2) |
+| A8 "all 21 still generated from upstream" | `ck` owns its profiles; one-time import, no vendoring | Generated from `ck/profiles/` |
+| §6 "whether the Artifact tool is available locally" | Reviews go through Claude's built-in review and comment system, in the desktop app or at claude.ai | Still a Phase 0 spike (S5); the mechanism is now the specified one, not an option |
+| §1 "product-thin" | Phase one is the full definition pipeline plus `/ck:design`; the Workbench is phase three; `/ck:feature` is phase two with the question open | The PRD's §6, §10 |
+
+The full record of the sixteen comments and the decision each drove is PRD §3.4.

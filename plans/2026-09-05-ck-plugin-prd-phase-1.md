@@ -1,12 +1,11 @@
 # `ck` Plugin, Phase One: Product Requirements Document
 
-> **Status:** PRD, ready for build
-> **Date:** 2026-09-05
+> **Status:** PRD, revision 3, ready for build
+> **Date:** 2026-09-08 (first version 2026-09-05)
 > **Author:** Fable (with Will Curran)
 > **Derives from:** [`plans/2026-09-05-agent-workflows-research-and-proposal.md`](2026-09-05-agent-workflows-research-and-proposal.md) (the research proposal)
-> **Supersedes:** the marketplace-retired decision in `claude-team-cli` (2026-07-31), for `ck` only; see §3.1
-> **Scope:** phase one only: plugin skeleton, `/ck:brief`, `/ck:prd`, `/ck:panel`, and `/ck:next` end to end, 21 personas as subagents on the §5.6 tiers. Everything else is in §10
-> **Revised:** 2026-09-05, after a cross-model panel against the Opus-written PRD; see [`plans/2026-09-05-ck-prd-panel-memo.md`](2026-09-05-ck-prd-panel-memo.md)
+> **Scope:** phase one: the plugin skeleton, the full product-definition pipeline (`/ck:opportunity`, `/ck:market-research`, `/ck:brief`, `/ck:prd`, `/ck:team`, `/ck:roadmap`, `/ck:architecture`, `/ck:brand-guide`, `/ck:design`), `/ck:panel`, `/ck:next`, and 21 personas as subagents and switch commands on three model tiers. Phases two and three are in §10
+> **Revision history:** rev 2 (2026-09-05) after a cross-model panel against the Opus-written PRD, see [`plans/2026-09-05-ck-prd-panel-memo.md`](2026-09-05-ck-prd-panel-memo.md); rev 3 (2026-09-08) after Will's sixteen-comment review of rev 2, see §3.4
 
 ---
 
@@ -14,25 +13,34 @@
 
 ### 0.1 Grading
 
-Every claim carries the proposal's grade, plus one more:
+Every claim carries the proposal's grade, plus two more:
 
 | Grade | Meaning |
 |---|---|
-| **[D]** | Product documentation, verified against the primary source on 2026-09-05. The URL is in Appendix I |
+| **[D]** | Product documentation, verified against the primary source on 2026-09-05. The URL is in Appendix J |
 | **[M]** | Measured, independent, method stated (carried over from the proposal) |
 | **[V]** | Vendor self-measured |
 | **[R]** | The family's own record: a devlog entry, roadmap revision, or test in a code-katz repo |
+| **[W]** | Will's decision, recorded with its date. Not open to challenge in this document |
 | **[P]** | Practitioner assertion or judgment call. Open to challenge; the rationale is stated |
 
 ### 0.2 What this document is
 
-The proposal is a research summary with a proposed shape. This is the specification for the first slice of that shape: what ships, what each piece must do, how it is tested, and what is deliberately left out. It contains acceptance criteria, schemas, and the full text of the three workflow scripts, three skills, and the brief-and-PRD contract, as appendices.
+The proposal is a research summary with a proposed shape. This is the specification for the first release of that shape: what ships, what each command must do, what each document it produces must contain, how it is tested, and what is deliberately left for phases two and three. It contains acceptance criteria, schemas, four complete workflow scripts, two complete skills, and two complete document contracts, as appendices. The remaining workflows are specified to the stage level in §6; their scripts are build work that follows the four written here.
 
-### 0.3 The three answers up front
+### 0.3 Three words that mean one thing each
 
-1. **It is a plugin.** Claude Code is the runtime for subagents, workflow scripts, and skills; nothing else can run them. No UI ships in phase one. The catalog view is a phase-two command that renders from files. A workbench is phase three, only if the files-as-workbench proves insufficient, and never a hosted app with its own store of definitions. See §4.7.
-2. **The skill owns the gates; each span between gates is one workflow.** A sign-off point is not a workflow. It is a gate: a review page with comments, a file the author edits, or, for Will, an interview. Gates live in the main session, because a workflow cannot pause for input and subagents cannot ask. See §4.2 and §4.9.
-3. **`ck` coexists with `claude-team-cli`.** Phase one is additive. The three handoff routes survive: switch this session (team-cli), delegate one task (`ck:<name>`), open a separate session (team-cli). Retirement is revisited at 90 days with usage data. See §8.6.
+| Word | Meaning in this document |
+|---|---|
+| `<project-repo>` | The git repository of the product being built: the folder where Claude Code was opened. Every document `ck` produces is written here and committed here. It is never the plugin's own directory and never the home directory. See §4.3 |
+| Gate | A point where a person reviews and decides. Gates run in the main session, never inside a workflow, because a workflow cannot pause for input [D]. See §4.2 |
+| Review page | Claude's built-in review and comment system: a private page in the Claude desktop app or at claude.ai, with comment mode. Every document or gallery that needs a decision is reviewed there. See §4.9 |
+
+### 0.4 The three answers up front
+
+1. **It is a plugin, and a Workbench follows it.** Claude Code is the runtime for subagents, workflow scripts, and skills; nothing else can run them. Phase one ships the plugin with no UI. Phase three rewrites the conductor dashboard as the `ck` Workbench: catalog, runs, cost, and persona and workflow editing against the plugin's source checkout, running locally. See §4.7 and §10.3.
+2. **The skill owns the gates; each span between gates is one workflow.** A sign-off point is not a workflow. It is a gate: a review page with comments, or a file the author edits. See §4.2.
+3. **`ck` is independent.** It replaces `claude-team-cli`, owns its persona definitions, and requires that `claude-team-cli` be uninstalled before use. Nothing in this document depends on, defers to, or coexists with it. [W, 2026-09-08]
 
 ---
 
@@ -42,121 +50,155 @@ The proposal is a research summary with a proposed shape. This is the specificat
 
 | Component | Count | What it is |
 |---|---|---|
-| Persona subagents | 21 | `agents/<name>.md`, generated from `claude-team-cli` profiles, registered as `ck:<name>`, model from the §5.6 tiers |
-| Workflows | 3 | `/ck:brief` (River writes the brief from one sentence), `/ck:panel` (three lenses on different models and different evidence, one decision memo), and `/ck:prd-draft` (River drafts, a checker validates, the panel challenges, River rewrites) |
-| Skills | 3 | `/ck:prd` (the entry point that owns the review before and after the draft), `/ck:next` (says what to run next in one sentence), and `prd-artifact` (the contract for the brief and the PRD: template, required fields, checklist) |
-| Hooks | 1 | `SubagentStart` on `^ck:` appending one line per persona invocation to a usage log, so the 90-day prune has data |
-| Tests | 1 suite | Manifest, drift against the pinned upstream, script lint, user-2 wording, Phase 0 answers, end-to-end drills |
+| Persona subagents | 21 | `agents/<name>.md`, generated from `ck/profiles/`, registered as `ck:<name>`, on three model tiers: Fable 5.1 for judgment, Opus 5 for craft, Sonnet 5 for execution (§5.3) |
+| Persona switch commands | 21 | `/ck:<name>`, generated from the same profiles, for the session-switch route that `claude-team-cli` used to provide (§5.6) |
+| Pipeline commands | 9 | `/ck:opportunity`, `/ck:market-research`, `/ck:brief`, `/ck:prd`, `/ck:team`, `/ck:roadmap`, `/ck:architecture`, `/ck:brand-guide`, `/ck:design`: the definition pipeline from an idea to a designed feature, each writing one committed document or gallery into `<project-repo>` (§6) |
+| Decision and navigation commands | 2 | `/ck:panel` (three lenses on three models argue one question; a memo shows where they disagree) and `/ck:next` (says what to run next in one sentence) |
+| Document contracts | 10 | One skill per document type: section order, required fields, checklist. Consistency comes from these, not from who writes (§7) |
+| Workflow scripts | 9 | `panel`, `brief`, `draft` (serves the PRD and the architecture document), `team`, `opportunity`, `market-research`, `roadmap`, `brand`, `design` |
+| Hooks | 2 | `SubagentStart` on `^ck:` appending one line per persona invocation to a usage log; `SessionStart` warning in plain words if `claude-team-cli` is still installed |
+| Tests | 1 suite | Manifest, generation drift, script lint, contract-to-script consistency, plain-language checks, Phase 0 answers, end-to-end drills (§9) |
 
-Revised on 2026-09-05 after a cross-model panel against the Opus-written PRD: nine changes adopted and eleven rejected, each with a reason, recorded in [`plans/2026-09-05-ck-prd-panel-memo.md`](2026-09-05-ck-prd-panel-memo.md).
+What changed in revision 3, from Will's review (§3.4): `ck` no longer references `claude-team-cli` except to require its removal; Clare is named as the primary user and her two journeys drive the design; every path is written as `<project-repo>/...`; the Fable tier is restored for the six judgment seats; phase one grows from four commands to the full definition pipeline; the Workbench is committed as phase three; and every review happens in Claude's built-in comment system.
 
-Everything in the proposal's §5.3 catalog beyond these commands, the hook-based gates, the model fallback chain, the Advisor tool, Routines, folding in the five artifact skills, persona switch skills, `/ck:map`, and any workbench are deferred with reasons in §10.
+Phase two is `/ck:feature`, `/ck:bugfix`, `/ck:gtm`, Routines, `/ck:map`, and `/ck:report`. Phase three is the Workbench. Both are in §10 with the reason for each placement, and one question for Will: whether `/ck:feature` moves into phase one.
 
 ---
 
-## 2. Problem, users, journey, goals
+## 2. Problem, users, journeys, goals
 
 ### 2.1 Problem
 
-The unit of Will's work is the workflow, not the roster (proposal §2.1). Today the personas exist only as session takeovers and delegation subagents. They own no artifacts, so their output varies run to run (proposal §3.4). Multi-lens input on a decision requires opening three sessions by hand, and the three lenses run on one model, which is one opinion in three costumes (proposal §3.4, [M] error correlation rises with capability). Nothing is repeatable across projects, and nothing is measured, so the persona question ("likely 15 more than are used", proposal §7) cannot be answered.
+The unit of the work is the workflow, not the roster (proposal §2.1). Today the personas exist only as session takeovers and delegation subagents. They own no documents, so their output varies run to run (proposal §3.4). Multi-lens input on a decision means opening three sessions by hand, and the three lenses run on one model, which is one opinion in three costumes (proposal §3.4; [M] error correlation rises with capability). Nothing is repeatable across projects, and nothing is measured, so the persona question ("likely 15 more than are used", proposal §7) cannot be answered.
+
+The person who feels this most is not Will. It is Clare, who runs the current tool every day.
 
 ### 2.2 Users
 
-Adapted from the Opus PRD §3, which made the harder user the first-class one. Where the two conflict, she wins and Will gets an escape hatch.
-
-| | Will | Will's wife |
+| | Clare | Will |
 |---|---|---|
-| Technical? | Yes. Reads and writes code, comfortable in files and the terminal | No. Has shipped several iOS apps with Claude and claude-team-cli |
-| Wants | Repeatability, adversarial input on decisions, visibility into cost and activity, a place to tune personas | To say what she wants in her own words and get a good document back |
-| Tolerates | Several commands, flags, JavaScript, terminal output, cost decisions | One command at a time, plain language, no model names, no token counts |
-| Fails when | The tool is slower than doing it himself | A command errors and she cannot tell what to do next |
+| Technical? | No. She has shipped several iOS apps with Claude and `claude-team-cli`, and has become proficient with it: she knows which workflows, process, and documents a product needs | Yes. Reads and writes code; maintains the plugin |
+| How she works | Runs many sessions at once, one persona per session, and hands work between them by hand | One session at a time, plus panels on decisions |
+| Wants | The same, efficient, high-fidelity process every time: an idea to a definition, a feature to design mockups, without re-explaining the process to each persona | Repeatability, adversarial input on decisions, visibility into cost and activity, a place to tune personas |
+| Tolerates | Plain language and one command at a time. Model names are fine when they explain a cost; she does not need to choose one | Flags, JavaScript, terminal output, cost decisions |
+| Fails when | Workflows, personas, and documents are inconsistent: the same step produces a different shape, asks different questions, or needs a different number of sessions than last time | The tool is slower than doing it himself |
 
-### 2.3 Journey J1: Will's wife starts a new product
+The rebuild is based on Clare's learnings from running the current tool. Two things follow. First, she is the primary user, and a phase-one command is done when it works for her from the README alone. Second, she is not fragile: she does not need to be protected from the tool, she needs it to be consistent and to cost her fewer sessions. Her persona work should take fewer hand-offs than it does today. [W, 2026-09-08]
 
-The primary journey. Phase one is done when this works without her opening a text editor or a hidden directory.
+### 2.3 Journeys
 
-1. She has an idea. She creates a folder and opens Claude Code in it.
-2. She types `/ck:` and sees the commands. She does not know where to start, so she runs `/ck:next`. It sees an empty project and says: "Start with `/ck:brief` and describe your idea in a sentence. It takes about a minute and writes `docs/brief.md`."
-3. She runs `/ck:brief An app that reminds you to water each plant on its own schedule`. River writes the brief: the problem and the chain of whys behind it, the user, one success number, the scope with a smaller first version, and what it will not do. A checker confirms the shape. `docs/brief.md` appears with a short list of questions River could not answer for her.
-4. She reads it. The user is not quite right. She either edits the file and saves, or, when the review page is available, opens the page and leaves a comment on the line. No approval screen, no command.
-5. `/ck:next` now says: "Run `/ck:prd`. It turns the brief into full requirements and takes a few minutes." She runs it. It reads her edited brief. A draft is written and checked, three specialists argue about it on three different models, and River revises it. `docs/PRD.md` appears.
-6. She gets a review page for `docs/PRD.md` with a short question at the top: "Imagine this shipped and did not move the number. What went wrong?" She comments where she disagrees, answers the question in a comment, and says "done". Claude works through every comment, changes the document, and marks each comment resolved with one line saying what changed. Without the review page she edits the file and runs `/ck:prd` again.
-7. `/ck:next` suggests what comes next.
+**J1. Clare takes a new product from an idea to a definition.** The primary journey. Phase one is done when it works end to end on a new project.
 
-What she never does: choose a model, learn what a subagent is, sequence the stages herself, approve or reject anything in a form, or see a token count.
+1. She has an idea. She creates a folder, opens Claude Code in it, and runs `/ck:next`. It sees an empty project and says: "Start with `/ck:opportunity` and describe your idea in a sentence. It writes `docs/opportunity.md`: what the product is, who it is for, what the market looks like, and whether it is worth doing."
+2. She runs `/ck:opportunity <her idea>`. River frames it, Toni writes the market context and positioning, Akira the technical shape, and the domain seat (a game designer, for a game) its own section. River assembles the analysis with stage gates, risks, and open questions. A review page opens. She comments where she disagrees and says "done". Claude applies every comment, republishes, and resolves each one with a line saying what changed. `docs/opportunity.md` is committed.
+3. `/ck:next` says: "Run `/ck:market-research` to go deeper on the market, or `/ck:brief` if the opportunity is enough." She picks. Each writes its document into `docs/`.
+4. `/ck:brief` writes the brief, with its own short market pass, and asks nothing. She reads it and edits or comments.
+5. `/ck:team` writes `docs/TEAM.md`: which personas are on this product, who owns which document and stage, and which seat is missing. She adjusts by comment.
+6. `/ck:prd` drafts the requirements, checks them, has three specialists argue about them on three different models, and rewrites. The review page carries one question at the top: "Imagine this shipped and did not move the number. What went wrong?" She answers in a comment. Claude finalizes `docs/PRD.md`.
+7. `/ck:roadmap`, `/ck:architecture`, and `/ck:brand-guide` follow, each with the same shape: run, review by comment, done. The brand guide takes two review rounds, first on proposals, then on finalists, both as galleries she comments on.
+8. At the end, `docs/` holds one document per step, every one committed, every one the same shape it was on her last product.
+
+**J2. Clare takes one feature to design mockups, the same way every time.** The journey that fails most often today.
+
+1. In a project with a PRD and a brand guide, she runs `/ck:design <feature name>`.
+2. Kai reads the feature's requirements from `docs/PRD.md` and the brand guide, and produces a gallery: three labeled variants (A, B, C) of the feature's screens, each with its rationale and its trade-off.
+3. The gallery opens as a review page. She comments on the variant she wants, and on what to change.
+4. Claude applies the comments, produces the chosen variant at full fidelity with a written design spec, republishes, and resolves each comment.
+5. `docs/design/<feature>/` holds the gallery, the chosen variant, and the spec, committed. The next feature runs exactly the same way.
+
+**J3. Will runs a panel on a decision.** `/ck:panel <question>` with any context document. Three lenses on three models argue it; a memo shows where they disagree and leaves the decision to him. `docs/decisions/` holds the memo, committed.
 
 ### 2.4 Goals and measures
 
 | # | Goal | Measure | Source |
 |---|---|---|---|
-| G1 | Consistency: the same stage produces the same document shape every time | Two PRDs from two projects have identical section structure; the validator passes on both | The contract checklist (§7.8) |
-| G2 | Repeatability: the stages ship with every project | A fresh project has every phase-one command after one install | The install drill (§9) |
+| G1 | Consistency: the same step produces the same document shape every time | Two documents of one type from two projects have identical section structure; the validator passes on both | The contracts (§7) |
+| G2 | Repeatability: the pipeline ships with every project | A fresh project has every phase-one command after one install | The install drill (§9) |
 | G3 | Adversarial input: real disagreement on a judgment call | In more than half of panel runs, at least one lens recommends differently, or at least one kill condition is met | `panelFailedToDisagree` and `agreementRate` in each memo |
-| G4 | The harder user succeeds | J1 completes on a new project without a text editor or a hidden directory | The user-2 drill (§9) |
-| G5 | Retention (proposal §3.4: the real metric for a personal tool) | At 30 days after install, at least one `/ck:prd`, `/ck:brief`, or `/ck:panel` run per week of active building | `${CLAUDE_PLUGIN_DATA}/usage.jsonl` (§5.5) |
-| G6 | Instrumented: the persona question can be answered at 90 days | Every persona invocation is logged with its type and session | The same log |
+| G4 | Clare's journeys work | J1 and J2 complete on a new project from the README alone | The J1 and J2 drills (§9) |
+| G5 | Efficiency for Clare | J2 takes one command and one review, where today it takes several sessions and hand-offs by hand | The J2 drill, session count |
+| G6 | Retention (proposal §3.4: the real metric for a personal tool) | At 30 days after install, at least one pipeline or panel run per week of active building | `${CLAUDE_PLUGIN_DATA}/usage.jsonl` (§5.5) |
+| G7 | Instrumented: the persona question can be answered at 90 days | Every persona invocation is logged with its type and session | The same log |
 
-Leading indicator: usage log entries in the first week. A panel that always agrees is a failed panel (proposal §5.5); if G3 is missed, the lenses or the question template are wrong, not the users.
+Leading indicator: usage-log entries in the first week. A panel that always agrees is a failed panel (proposal §5.5); if G3 is missed, the lenses or the question template are wrong, not the users.
 
 ### 2.5 Non-goals for phase one
 
-- No workflow other than `brief`, `panel`, and `prd-draft`. The rest of the catalog in proposal §5.3 is phase two.
-- No UI, dashboard, map, or workbench. `/workflows` is the run view (proposal §9, [D]).
-- No retirement of `claude-team-cli`, no persona switch skills (`/ck:river`), no CLI in `bin/`.
-- No hook-enforced artifact gates, no model fallback chain, no Advisor tool, no Routines, no mid-run arbitration (workflows cannot pause; §4.2).
-- No persona pruning. All 21 port; the instrument ships; the cut list follows the data.
-- No changes to the persona text. Profiles stay upstream; `ck` transforms them mechanically.
+- No `/ck:feature`, `/ck:bugfix`, or `/ck:gtm`. They need the definition pipeline's documents as inputs and are phase two (§10.2), with `/ck:feature` open for Will to pull forward.
+- No UI. `/workflows` is the run view in phase one [D]. The Workbench is phase three (§10.3).
+- No hook-enforced document gates, no model fallback chain, no Advisor tool, no Routines, no mid-run arbitration (workflows cannot pause; §4.2).
+- No persona pruning. All 21 ship; the instrument ships; the cut list follows the data.
+- No compatibility with, migration from, or reference to `claude-team-cli` beyond the one-time import of its profiles (§5.1) and the uninstall prerequisite (§8.4).
 
 ---
 
 ## 3. Decisions
 
-### 3.1 Decisions on record that this PRD supersedes or honors
+### 3.1 Decisions on record that this PRD honors or supersedes
 
 | Date | Decision and where it is recorded | What `ck` does | Grade |
 |---|---|---|---|
-| 2026-07-29 | No second source of persona truth. Local overrides and team-scoped profiles retired (team-cli `ROADMAP.md` revision history, `CONTRIBUTING.md`) | Honored. `ck/agents/` is generated from a byte-for-byte vendored copy of team-cli `profiles/` at a pinned commit, committed, and drift-tested. Editing a persona still means a PR or a fork upstream | [R] |
-| 2026-07-31 | Marketplace publishing retired for team-cli, not deferred: `/akira` would become `/claude-team:akira`, and a plugin cannot put `claude-team` in the user's shell, so `launch` and `session` could not ship (team-cli `ROADMAP.md`, `DEVLOG.md`) | **Superseded for `ck` only.** `ck` accepts namespacing because the prefix is two characters, because workflows and subagents need no shell CLI, and because the things the 07-31 decision protected (`/akira`, `launch`, `session`, the coordinator) stay exactly where they are. team-cli's own decision stands | [R], [P] |
-| 2026-07-04 | Conductor: keep and harden the local Node dashboard; JSONL parsing fenced with fixtures; plugin packaging (conductor `DEVLOG.md`) | Honored as precedent for any future viewer: local server plus browser, reading files on disk | [R] |
-| 2026-07-25 | Conductor research branch: "drop Tauri, target local server + browser" | Honored. A desktop app is not on the table | [R] |
-| proposal §9 | "Use `/workflows` and do not build a UI until it proves insufficient" | Honored in phase one. §4.7 says what would count as insufficient | [P] |
+| 2026-07-29 | No second source of persona truth (team-cli `ROADMAP.md` revision history, `CONTRIBUTING.md`) | Honored by moving the source, not forking it. `ck/profiles/` is the only place persona text is edited; `agents/` and the switch skills are generated from it and drift-tested. The import from the old tool happens once (§5.1) | [R] |
+| 2026-07-04 | Conductor: keep and harden the local Node dashboard; JSONL parsing fenced with fixtures (conductor `DEVLOG.md`) | Superseded in part. The dashboard is rewritten as the `ck` Workbench after phase one (§10.3). The fixture-fenced JSONL cost parser and `pricing.json` are reused | [W, 2026-09-08] |
+| 2026-07-25 | Conductor research branch: "drop Tauri, target local server + browser" | Honored. The Workbench is a local server and a browser | [R] |
+| proposal §9 | "Use `/workflows` and do not build a UI until it proves insufficient" | Honored in phase one, superseded for phase three: the Workbench will be built | [W, 2026-09-08] |
 
-### 3.2 Decisions made in this PRD (the proposal's §8, resolved)
+### 3.2 The proposal's §8, resolved
 
 | # | Question (proposal §8) | Decision | Grade |
 |---|---|---|---|
-| 1 | Retire or coexist? | **Coexist.** `ck` is additive. team-cli keeps switch commands, coordinator, `launch`, `session`, `install.sh`. The three routes survive (§8.6). Revisit at 90 days with `usage.jsonl` | [P] |
-| 2 | Workflow granularity vs sign-off | **The skill owns the gates; each span between gates that needs fan-out or verification is one workflow; a single-agent span runs inline via the Agent tool.** `/ck:prd` is a skill: the brief (from `/ck:brief`, or an optional interview) → `prd-draft` workflow → review (a page with comments, or a file edit) → inline finalize. `/ck:panel` and `/ck:brief` are pure workflows: inputs are args, output is a document, no gate. Full rule and the failure modes it must survive: §4.2, §4.3 | [D]-backed |
-| 3 | Where artifacts live | **The artifact is the state** (adopted from the Opus PRD §7.9). Deliverables live at fixed, conventional, committed paths: `docs/brief.md`, `docs/PRD.md`, `docs/decisions/<timestamp>-<slug>.md`, overridable by argument. `.ck/runs/<run-id>/` is a cache (per-lens JSON, the harness run id), locally excluded via `.git/info/exclude`; nothing depends on it. Resume works from which documents exist plus a start-at stage (§4.3). The plugin never edits the user's `.gitignore` | [P] |
-| 4 | Which personas survive? | **All 21 port now; prune at 90 days on evidence.** The port is generated, so carrying 21 costs nothing. No usage data exists, so a cut list today is a guess. The instrument ships in phase one (§5.5). This contradicts proposal §8.4 and agrees with proposal §7 | [P] |
-| 5 | Panel model assignment | **River on Opus 5, Toni on Fable 5.1, Kai on Sonnet 5 by default,** overridable per run. `panel.js` is the one script allowed to set `model` on a persona agent, because per-invocation model beats frontmatter [D] and decorrelation is the point. The memo header states the limitation: one training pipeline, partial decorrelation. A lens that dies on an API error returns `null`; the memo runs on the survivors and says so | [P] |
-| 6 | `/ck:feature` scope | **Deferred to phase two.** Both options recorded in §10.2 | deferred |
-| 7 | Routines | **Deferred.** One constraint carried into phase one: `panel` must be runnable headless (no gate inside it), which it is. `prd` cannot be, by construction | deferred |
-| 8 | Oracle for non-code artifacts | **A structural validator plus the human gate.** `skills/prd-artifact/SKILL.md` carries the checklist; a neutral Haiku agent checks the draft against it inside the workflow, with at most two revise loops; Gate 1 is the human oracle. Hook-based gates are a phase-two spike (§3.3 item 7) | [P] |
+| 1 | Retire or coexist with the old tool? | **Neither is a consideration.** `ck` is a replacement, built independently. The old tool must be uninstalled before `ck` is used (§8.4). What it did that must not be lost (persona switch, "who should be on this", parallel work) is carried by `ck` itself (§5.6, §6.5, §10.2) | [W, 2026-09-08] |
+| 2 | Workflow granularity vs sign-off | **The skill owns the gates; each span between gates that needs fan-out or verification is one workflow; a single-agent span runs inline via the Agent tool.** Full rule: §4.2 | [D]-backed |
+| 3 | Where documents live | **The document is the state.** Every deliverable lives at a fixed, conventional, committed path under `<project-repo>` (§4.3). `.ck/runs/<run-id>/` is a cache; nothing depends on it | [W, 2026-09-08], [P] |
+| 4 | Which personas survive? | **All 21 ship; prune at 90 days on evidence.** Generation makes carrying 21 free. No usage data exists, so a cut list today is a guess. The instrument ships in phase one (§5.5). Agrees with proposal §7, contradicts §8.4 | [P] |
+| 5 | Panel model assignment | **River on Fable 5.1, Toni on Opus 5, Kai on Sonnet 5 by default.** River and Toni run on their own tiers; only Kai is moved, downward, so that three lenses are three models. Overridable per run. The memo header states the limitation: one training pipeline, partial decorrelation | [W, 2026-09-08] for the tiers; [P] for the assignment |
+| 6 | `/ck:feature` scope | **Phase two, with the question open for Will** (§10.2, §10.4). Both scope options recorded | open |
+| 7 | Routines | **Phase two.** One constraint carried into phase one: every pure workflow (`panel`, `market-research`, `brief`, `team`, `roadmap`) is runnable headless. `market-research` is the first candidate for a schedule | deferred |
+| 8 | Oracle for non-code documents | **A structural validator plus the human gate.** Each contract skill carries a checklist; a neutral Haiku agent checks the draft against it inside the workflow, with at most two revise loops; the review page is the human oracle. Hook-based gates are a phase-two spike (§3.3 item 6) | [P] |
 
 ### 3.3 Corrections to the proposal
 
 Each item names the proposal section, what is wrong, and what this PRD does instead.
 
 1. **§5.1, plugin name.** The tree is rooted at `code-katz/` and every command is `/ck:...`. The command prefix is the plugin's `name` and cannot be opted out of [D]. The plugin is named `ck`. The repo is `code-katz/ck`.
-2. **§5.1 vs §8.1, retire or coexist.** §5.1 says "retire the bash CLI"; §8.1 asks whether to. Resolved: coexist (§3.2 item 1). A plugin `bin/` directory is on the Bash tool's PATH [D], so a `ck` CLI for Claude's use is possible later; it still cannot reach the user's shell, which is what `launch` needs.
-3. **§3.2, §5.1, §5.6, §7, roster count.** The proposal says 22. `profiles/` holds 21 personas and the 2026-09-04 devlog says twenty-one [R].
-4. **§5.6, unassigned personas.** The tier table assigns 14 of 21. Reiner, Cornelius, Ernie, Rez, Tracy, Travolta, and Noon are unassigned. All seven are judgment or craft seats, so they go to Judgment (Opus 5); Reiner moves from Fable, the other six from Opus 4.8. Piper is Execution as listed. Result: 17 on Opus 5, 4 on Sonnet 5, none on Fable. Fable 5.1 and Haiku 4.5 are workflow-stage tiers, not persona tiers. §5.3 has the table.
-5. **§5.5 vs §5.6, the panel contradiction.** "Each lens runs on a different model. Not negotiable" and "River, Toni, Kai: Opus 5" cannot both hold through frontmatter alone. Resolved by a per-invocation override in `panel.js` only (§3.2 item 5). Consequence for the PRD: tiers are defaults; the document says which script may override them (one) and which may not (every other).
-6. **§5.6, where the tier re-base happens.** `tiers.conf` in team-cli names itself the single source of truth [R]. The re-base is a prerequisite PR to team-cli; `ck`'s generator copies the value verbatim. Recommendation for that PR: aliases (`opus`, `sonnet`) rather than full IDs, so a tier tracks the current generation and the resolved model is recorded per run by `/workflows` [D]. [P]
-7. **§5.2 and §5.7, the gate mechanism.** "`TaskCompleted` or `Stop`, exit code 2, rejects malformed output." `Stop` is the main conversation's event; the subagent event is `SubagentStop`, whose exit-2 feedback path to the agent is not documented [D as read]; plugin agents ignore per-agent `hooks:` frontmatter [D]. Phase one validates inside the workflow: schema-forced output, which the harness retries on mismatch [D], plus a validator agent against the artifact checklist. Hook gates are a phase-two spike with a stated test.
-8. **§5.6, fallback chain via `PreModelSwitch`.** The hook fires "before Claude Code applies a model switch that you or a client requested" [D]. Nothing says it covers subagent model selection or an API quota error. Phase-one resilience is null-tolerant scripts: a lens or stage that fails returns `null`, and the script continues and logs it. A real fallback is a phase-two spike.
-9. **§8.4 vs §7.** "A cut list should precede the port" against "instrument and prune after 90 days." No data exists. Port everything and instrument (§3.2 item 4).
-10. **§6, "no state file".** Script variables die with the run. A gate between two workflows requires the artifact on disk. `.ck/runs/` is the artifact directory, not a coordination state file in the conductor sense; the proposal's argument against a custom task graph and lock protocol still holds.
-11. **§4.1 vs §3.4, what buys consistency.** §4.1 says repeatability "is the whole answer to goal 3"; §3.4 says consistency comes from the artifact contract. §3.4 is right. Workflows give the same process; artifact skills give the same shape. Phase one's most important file is `skills/prd-artifact/SKILL.md`, not `prd-draft.js`.
-12. **§4.2, `maxBudgetUsd`.** Not in the subagent frontmatter table read today [D]. Not relied on.
-13. **§9, the superseded plan.** `claude-conductor/plans/2026-09-04-agent-coordination-engine.md` is on no branch of that repo. Commit it, so the supersession is traceable.
-14. **§5.2, the persona layer.** "Voice, domain constraints, model tier" omits that a subagent has no user to ask. Every persona's `## Required Interactive Behaviors` is written as questions to the user; unrewritten, it is dead text or a stall. §5.4 has the transform.
-15. **§4.1, fan-out cache economics.** The prompt-cache sharing described there applies to agents matching on model, effort, agent type, tools, schema, and cwd [D]. A persona panel is three agent types on three models and shares nothing. The cost model in Appendix H assumes no sharing.
+2. **§3.2, §5.1, §5.6, §7, roster count.** The proposal says 22. `profiles/` holds 21 personas [R].
+3. **§5.6, collapsing Fable into Opus.** The proposal re-bases the six Fable seats onto Opus 5 on price. Rejected: Will wants Fable where judgment matters and Sonnet where volume matters [W, 2026-09-08]. The six judgment seats stay on Fable, moving from Fable 5 to Fable 5.1 (same price [D]); the eleven craft seats move from Opus 4.8 to Opus 5; the four execution seats stay on Sonnet 5. The seven personas the proposal left unassigned (Reiner, Cornelius, Ernie, Rez, Tracy, Travolta, Noon) are placed in §5.3. Haiku 4.5 is a workflow-stage tier for validators, never a persona tier.
+4. **§5.5 vs §5.6, the panel contradiction.** "Each lens runs on a different model. Not negotiable" and a tier table that puts River and Toni on one model cannot both hold through frontmatter alone. With the tiers in item 3, River (Fable 5.1) and Toni (Opus 5) already differ; Kai is moved from Opus 5 to Sonnet 5 by a per-invocation override in `panel.js`. Tiers are defaults; `panel.js` is the one script that may override them (§4.5).
+5. **§5.2 and §5.7, the gate mechanism.** "`TaskCompleted` or `Stop`, exit code 2, rejects malformed output." `Stop` is the main conversation's event; the subagent event is `SubagentStop`, whose exit-2 feedback path to the agent is not documented [D as read]; plugin agents ignore per-agent `hooks:` frontmatter [D]. Phase one validates inside the workflow: schema-forced output, which the harness retries on mismatch [D], plus a validator agent against the contract checklist.
+6. **§5.6, fallback chain via `PreModelSwitch`.** The hook fires "before Claude Code applies a model switch that you or a client requested" [D]. Nothing says it covers subagent model selection or an API quota error. Phase-one resilience is null-tolerant scripts: a lens or stage that fails returns `null`, and the script continues and logs it.
+7. **§8.4 vs §7.** "A cut list should precede the port" against "instrument and prune after 90 days." No data exists. Ship everything and instrument (§3.2 item 4).
+8. **§6, "no state file".** Script variables die with the run. A gate between two workflows requires the document on disk. The documents in `<project-repo>/docs/` are that state; `.ck/runs/` is a cache. The proposal's argument against a custom task graph and lock protocol still holds.
+9. **§4.1 vs §3.4, what buys consistency.** §4.1 says repeatability "is the whole answer to goal 3"; §3.4 says consistency comes from the document contract. §3.4 is right, and Clare's failure mode (§2.2) is exactly the one contracts fix. Workflows give the same process; contracts give the same shape. Phase one's most important files are the ten contracts in §7.
+10. **§4.2, `maxBudgetUsd`.** Not in the subagent frontmatter table read today [D]. Not relied on.
+11. **§9, the superseded plan.** `claude-conductor/plans/2026-09-04-agent-coordination-engine.md` is on no branch of that repo. Commit it, so the supersession is traceable.
+12. **§5.2, the persona layer.** "Voice, domain constraints, model tier" omits that a subagent has no user to ask. Every persona's `## Required Interactive Behaviors` is written as questions to the user; unrewritten, it is dead text or a stall. §5.4 has the transform.
+13. **§4.1, fan-out cache economics.** The prompt-cache sharing described there applies to agents matching on model, effort, agent type, tools, schema, and cwd [D]. A persona panel is three agent types on three models and shares nothing. The cost model in Appendix I assumes no sharing.
+14. **§5.3, the catalog's phasing.** The proposal's phase one was `/ck:prd` and `/ck:panel`. To test the shape on a real product the whole definition pipeline is needed, and Clare's design step with it [W, 2026-09-08]. §6 is that pipeline.
 
-What the proposal gets right and this PRD keeps unchanged: §3 (topology, not persona strings, is the lever; buy quality with a different model and a real oracle), §4.3 (Agent Teams is not the executor), §5.2 (the four layers), §5.5 (forced self-disagreement; three approvals is a failed panel), §6 (the not-building list), §7 (the honest assessment), §9 (the UI stance).
+What the proposal gets right and this PRD keeps unchanged: §3 (topology, not persona strings, is the lever; buy quality with a different model and a real oracle), §4.3 (Agent Teams is not the executor), §5.2 (the four layers), §5.5 (forced self-disagreement; three approvals is a failed panel), §6 (the not-building list), §7 (the honest assessment).
 
-A second review, against the PRD Opus wrote from the same proposal, produced nine changes adopted into this document and eleven rejections. The Opus PRD's own errors, verified against the docs, and the reason for each rejection are in [`plans/2026-09-05-ck-prd-panel-memo.md`](2026-09-05-ck-prd-panel-memo.md). The largest change: this document had named Will's wife as customer zero and then designed for Will. §2.2, §2.3, §4.8, and the file-edit path in §7.6 exist because the Opus PRD made her the harder constraint.
+### 3.4 Will's review of revision 2 (sixteen comments, 2026-09-08)
+
+Revision 2 was published as a review page; Will left sixteen comments. Each is recorded here with the decision it drove, so the thread on the page can be resolved against a line in the document.
+
+| # | Comment (abridged) | Decision | Where |
+|---|---|---|---|
+| 1 | "Why is this PRD so focused on retiring team-cli? Treat ck as independent." (four comments) | Every coexistence and retirement passage removed; `ck` owns its profiles; uninstall required | §0.4, §3.2 item 1, §5.1, §8.4 |
+| 2 | "Clare is not technical, but has become very proficient. She runs many multiple sessions. I want her persona work to be more efficient." | Clare named as primary user; her learnings drive the design; efficiency is a goal | §2.2, §2.4 G5 |
+| 3 | "Workflows, personas and artifacts are not consistent. She wants the same, efficient, high-fidelity process for moving features into design mockups." | J2 and `/ck:design` added; contracts made the consistency mechanism | §2.3 J2, §6.9, §7 |
+| 4 | "I would prefer a rewrite of the UI / dashboard after we complete ck." | Conductor's dashboard is rewritten as the Workbench, phase three | §3.1, §10.3 |
+| 5 | "Be precise on these paths. Use `<project-repo>/docs/brief.md`." (two comments) | `<project-repo>` defined once; every path written against it | §0.3, §4.3 |
+| 6 | "`/ck:feature`: what is this? Why is it out of scope?" | Explained in one paragraph; phase two with the question open | §10.2, §10.4 |
+| 7 | "It will be built." (the Workbench) | "If ever" removed; phase three committed | §4.7, §10.3 |
+| 8 | "Use Claude's review/comment system in the Claude desktop UI." | §4.9 rewritten around it; `ck` builds nothing of its own for reviews | §4.9 |
+| 9 | "Why are there no Fable models? Use Fable where it matters, Sonnet where it matters." | Fable tier restored for six judgment seats; Sonnet for four execution seats; panel default follows | §3.3 item 3, §5.3, §6.10 |
+| 10 | "The brief must do some basic market research." | Toni's market pass added to `/ck:brief` and to the brief contract | §6.3, §7.3 |
+| 11 | "I also want a branding / style guide. See d20mob and nightgrid." | `/ck:brand-guide` modelled on the NIGHTGRID process and the d20Mob guide | §6.8, §7.8 |
+| 12 | "I also want team selection. This step basically outlines R&R." | `/ck:team` writes `docs/TEAM.md` | §6.5, §7.5 |
+| 13 | "I also want an architecture workflow. PRD and roadmap in, architecture out." | `/ck:architecture` | §6.7, §7.7 |
+| 14 | "To truly test this I need opportunity, market-research, branding." | Phase one is the full definition pipeline | §6 |
+
+The earlier cross-model review (2026-09-05, against the PRD Opus wrote from the same proposal) still stands where Will's review did not touch it: the users table, the goals table, the document-is-the-state rule, per-lens evidence, the effort axis, Phase 0 spikes, `/ck:next`, and persona scopes for the 90-day prune came from that review. Its record, including eleven rejected items with reasons, is [`plans/2026-09-05-ck-prd-panel-memo.md`](2026-09-05-ck-prd-panel-memo.md). One of its rejections (coexistence with the old tool) is now moot: Will's decision replaced both positions.
 
 ---
 
@@ -166,12 +208,14 @@ A second review, against the PRD Opus wrote from the same proposal, produced nin
 
 | Layer | Primitive | Owns | Phase-one instance |
 |---|---|---|---|
-| Workflow | `workflows/*.js` | The order of stages, outside the conversation | `panel.js`, `prd-draft.js` |
+| Workflow | `workflows/*.js` | The order of stages, outside the conversation | `panel`, `brief`, `draft`, `team`, `opportunity`, `market-research`, `roadmap`, `brand`, `design` |
 | Persona | `agents/*.md` | Voice, domain constraints, default model tier | 21 generated files, `ck:<name>` |
-| Artifact | `skills/*/SKILL.md` | Output template, required fields, checklist | `prd-artifact` |
-| Gate | The skill in the main session | Sign-off: a review page with comments, a file edit, or the optional interview; plus schema-forced output and a validator agent inside the workflow | `prd` (the brief check and the review); the validators in `brief.js` and `prd-draft.js` |
+| Contract | `skills/<document>-artifact/SKILL.md` | Section order, required fields, checklist for one document type | 10 contracts (§7) |
+| Gate | The skill in the main session | Sign-off: a review page with comments, or a file edit; plus schema-forced output and a validator agent inside the workflow | `opportunity`, `prd`, `architecture`, `brand-guide`, `design` skills; the validators in every workflow |
 
-The proposal put the gate layer in `hooks/hooks.json`. Phase one puts human gates in the skill and machine gates in the scripts (§3.3 item 7). The hook that does ship is instrumentation, not enforcement.
+The proposal put the gate layer in `hooks/hooks.json`. Phase one puts human gates in the skill and machine gates in the scripts (§3.3 item 5). The hooks that ship are instrumentation and a prerequisite check, not enforcement.
+
+**One drafting engine.** `/ck:prd` and `/ck:architecture` have the same shape: one author drafts to a contract, a checker validates, a three-lens panel challenges, the author rewrites with a challenged-claims appendix and a premortem. One script, `workflows/draft.js`, serves both; the skill passes which contract, which author, and which lenses. A third document with that shape costs a skill and a contract, not a script. [P]
 
 ### 4.2 The gate rule
 
@@ -179,7 +223,7 @@ The docs: "No mid-run user input. Only agent permission prompts can pause a run.
 
 Therefore:
 
-1. A sign-off is a **gate**. A gate runs in the main session, inside a skill: a review page with comments (§4.9), a file the author edits and re-runs, or, optionally, an interview with `AskUserQuestion`.
+1. A sign-off is a **gate**. A gate runs in the main session, inside a skill: a review page with comments (§4.9), or a file the author edits and re-runs.
 2. The span between two gates is a **workflow** when it needs fan-out, structured output, or resume. A span that is one agent runs inline through the Agent tool; a workflow for one agent buys nothing.
 3. A workflow never contains a decision point. A skill never fans out by hand.
 4. A skill or slash command whose instructions say to call Workflow is explicit opt-in [D]; no `ultracode` keyword, no "use a workflow" phrase is needed.
@@ -188,26 +232,45 @@ Rejected alternatives: one workflow per persona action (the skill would orchestr
 
 What would make the rule wrong: subagents regaining `AskUserQuestion`, or workflows gaining a pause primitive. Neither is on the record.
 
-### 4.3 Artifacts are the state; the run directory is a cache
+Applied to the catalog:
 
-Adopted from the Opus PRD §7.9. The deliverables outlive the tool, so they live at plain, committed paths, and the plugin keeps no private state that anything depends on.
+| Command | Shape | Gates |
+|---|---|---|
+| `/ck:panel`, `/ck:market-research`, `/ck:brief`, `/ck:team`, `/ck:roadmap` | A pure workflow: inputs are arguments, output is a document, no gate. The document is reviewed afterwards by comment or by edit whenever the author wants | None inside |
+| `/ck:opportunity`, `/ck:prd`, `/ck:architecture` | Skill: workflow, then one review gate, then an inline finalize | One |
+| `/ck:brand-guide` | Skill: three workflow stages with a gallery gate between each | Two |
+| `/ck:design` | Skill: one workflow stage, a gallery gate, one more stage | One |
+| `/ck:next`, `/ck:<persona>` | Skill only, no agents | None |
 
-| Artifact | Path | Written by | Committed |
-|---|---|---|---|
-| Brief | `docs/brief.md` | `/ck:brief`, or the optional interview in `/ck:prd` | Yes |
-| PRD | `docs/PRD.md` | `/ck:prd` (written progressively by the `prd-draft` stages, then finalized) | Yes |
-| Decision memo | `docs/decisions/<timestamp>-<slug>.md` | `/ck:panel`, and the nested panel inside `prd-draft` | Yes |
+### 4.3 `<project-repo>`: the document is the state
 
-Paths are overridable by argument. `docs/` is the Opus convention; the family's root-level files (`ROADMAP.md`, `DEVLOG.md`) are unchanged.
+`<project-repo>` is the git repository of the product being built: the folder in which Claude Code was opened. It is not the `ck` plugin's install directory (a copy under `~/.claude/plugins/`), not the `ck` source checkout, and not `~/.claude`. Every document `ck` writes goes into `<project-repo>` at a fixed, conventional path, and is committed with the product. [W, 2026-09-08]
 
-The run directory is a cache. It holds what a fresh session might want but nothing the deliverable depends on:
+| Document | Path in `<project-repo>` | Written by |
+|---|---|---|
+| Opportunity analysis | `docs/opportunity.md` | `/ck:opportunity` |
+| Market research | `docs/market-research.md` | `/ck:market-research` |
+| Brief | `docs/brief.md` | `/ck:brief` |
+| PRD | `docs/PRD.md` | `/ck:prd` |
+| Team, roles and responsibilities | `docs/TEAM.md` | `/ck:team` |
+| Roadmap | `ROADMAP.md` (the family's root-level convention [R]) | `/ck:roadmap` |
+| Architecture | `docs/ARCHITECTURE.md` | `/ck:architecture` |
+| Brand direction record | `docs/decisions/<timestamp>-brand-direction.md` | `/ck:brand-guide` |
+| Brand guide | `docs/brand-guide.md` | `/ck:brand-guide` |
+| Brand galleries and assets | `brand/proposals/`, `brand/finalists/`, `brand/final/` | `/ck:brand-guide` |
+| Design gallery, chosen variant, spec | `docs/design/<feature>/gallery.html`, `chosen.html`, `spec.md` | `/ck:design` |
+| Decision memo | `docs/decisions/<timestamp>-<slug>.md` | `/ck:panel`, and the panel inside `draft` |
+
+Paths are overridable by argument. The plugin never edits `.gitignore`; nothing it writes needs excluding except the cache below.
+
+The cache lives at `<project-repo>/.ck/runs/<run-id>/` and holds what a fresh session might want but nothing a document depends on:
 
 ```
 .ck/runs/<run-id>/
-├── run.json            { runId, createdAt, status, stage, outputPath, lenses, harnessRunId, scriptPath }
-├── interview.md        the optional interview's answers, appended one at a time
+├── run.json              { runId, command, createdAt, status, stage, outputPath, lenses, harnessRunId, scriptPath }
 ├── panel/<persona>.json  one file per lens
-└── gate-1.md           review-page comments or file edits, as applied
+├── sections/<persona>.md one file per contributor, for the assembled documents
+└── review.md             the comments and how each was applied
 ```
 
 Rules, each of which closes a failure mode found in review:
@@ -215,60 +278,69 @@ Rules, each of which closes a failure mode found in review:
 | Rule | Failure it closes |
 |---|---|
 | `run-id` is `<UTC timestamp>-<slug>`, minted by the skill with `date -u`; workflows receive `timestamp` in `args` because `Date.now()` throws in scripts [D] | Non-deterministic scripts break resume |
-| `runDir` is passed **absolute** in `args` | Subagents inherit the session cwd; a user in a subdirectory would get `.ck/` in the wrong place |
-| Every workflow accepts `args.startAt` and skips completed stages; the skill decides `startAt` by which artifacts exist | A fresh session cannot replay the harness cache [D]; the file on disk is what survives |
-| The optional interview appends each answer to `interview.md` as it is given, and the skill offers to resume an interview that has answers but no brief | Compaction in the middle of the interview loses the answers |
+| `projectRoot` and `runDir` are passed **absolute** in `args` | Subagents inherit the session cwd; a user in a subdirectory would write `docs/` in the wrong place |
+| Every workflow accepts `args.startAt` and skips completed stages; the skill decides `startAt` by which documents exist | A fresh session cannot replay the harness cache [D]; the file on disk is what survives |
 | The skill writes the Workflow tool's own run id into `run.json` as `harnessRunId` before it waits | Within a session, `resumeFromRunId` replays completed agents at no cost [D] |
-| The skill adds `.ck/` to `.git/info/exclude` on first use, never to `.gitignore` | team-cli's `session done` refuses untracked files [R]; the cache must not block closing a worktree |
+| The skill adds `.ck/` to `<project-repo>/.git/info/exclude` on first use, never to `.gitignore` | The cache must not appear in the product's history, and the plugin must not edit a tracked file the author did not ask it to |
 | Every agent that writes returns the path it wrote, in its schema | The script cannot check the filesystem; the next stage needs the path |
 
 ### 4.4 Naming
 
 - Plugin `name`: `ck`. Everything is `/ck:<name>` or `ck:<name>` [D].
-- Skills: `prd` and `next` (user-invocable, `disable-model-invocation: true`), `prd-artifact` (not user-invocable; read by agents and loadable by Claude when writing any brief or PRD).
-- Workflows: `brief`, `panel`, `prd-draft`. A plugin workflow is itself a slash command [D], so `/ck:brief`, `/ck:panel`, and `/ck:prd-draft` all appear in autocomplete. `prd-draft` is safe to run directly if `docs/brief.md` exists; `/ck:prd` is the supported path.
-- No name is shared between a skill and a workflow, because both occupy `/ck:<name>`.
+- Pipeline skills: `opportunity`, `prd`, `architecture`, `brand-guide`, `design`, `next` (user-invocable, `disable-model-invocation: true`).
+- Workflows: `panel`, `market-research`, `brief`, `team`, `roadmap` (user-invocable directly, since they have no gate) and `draft`, `opportunity-draft`, `brand`, `design-round` (launched by their skills; runnable directly by Will). A plugin workflow is itself a slash command [D], so all nine appear in autocomplete. No name is shared between a skill and a workflow, because both occupy `/ck:<name>`.
+- Contracts: `<document>-artifact` (not user-invocable; read by agents and loadable by Claude when writing that document type anywhere).
+- Persona switch skills: `/ck:<name>`, one per persona (§5.6). No persona name collides with a command name.
 - Agents: `river`, `akira`, ... in frontmatter (no colon allowed [D]); registered as `ck:river`, referenced as `agentType: 'ck:river'` in scripts and `subagent_type: "ck:river"` from the Agent tool.
 
 ### 4.5 Model policy and the effort axis
 
-Two axes, adopted from the Opus PRD §7.8: the persona sets the model floor; the workflow stage sets the effort. Difficulty belongs to the task, not the persona.
+Three persona tiers and two stage tiers. The persona sets the model floor; the workflow stage sets the effort. Difficulty belongs to the task, not the persona. [W, 2026-09-08] for the tiers; the effort axis is from the Opus PRD §7.8.
+
+| Tier | Model | Who | Why |
+|---|---|---|---|
+| Judgment | `claude-fable-5-1` | River, Akira, Morgan, Sage, Jordan, Reiner | The seats whose output is a decision: product, architecture, security, business, data, game design. Fable where it matters |
+| Craft | `claude-opus-5` | Toni, Kai, Iris, Quinn, Casey, Cornelius, Ernie, Rez, Tracy, Travolta, Noon | Judgment-heavy craft at moderate volume |
+| Execution | `claude-sonnet-5` | Sasha, Alex, Robin, Piper | Implementation and volume. Sonnet where it matters |
+| Research (stage) | `claude-sonnet-5` | Neutral research agents in `market-research` | Volume reading and web search, checked afterwards |
+| Classification (stage) | `claude-haiku-4-5-20251001` | Validators in every workflow | Shape checks against a checklist |
+| Synthesis (stage) | The session model | Neutral synthesis and assembly agents | Holds no lens; inherits |
 
 | Agent kind | Model comes from | Effort comes from | Who may override the model |
 |---|---|---|---|
-| Persona agent (`agentType: 'ck:<name>'`) | Frontmatter `model:` from the §5.6 tiers, via `tiers.conf` upstream | The script, per stage; omitted means the session's effort | `panel.js` only, for lens decorrelation |
-| Neutral utility agent (no `agentType`): validator, synthesis | The script sets `model` for the validator (Haiku 4.5, classification tier); synthesis inherits the session model | The script: validators run at `low` | The script |
-| The main session (gates, `/ck:next`, finalize) | The user's session model | The session | The user |
+| Persona agent (`agentType: 'ck:<name>'`) | Frontmatter `model:` from `ck/tiers.conf` | The script, per stage; omitted means the session's effort | `panel.js` only, and only downward, for lens decorrelation |
+| Neutral utility agent (no `agentType`) | The script | The script: validators at `low`, researchers at `medium` | The script |
+| The main session (gates, `/ck:next`, finalize, switch skills) | The user's session model | The session | The user |
 
-Precedence is per-invocation → frontmatter → `CLAUDE_CODE_SUBAGENT_MODEL` → session [D]. `agent()` accepts `effort` per call [D]. Persona frontmatter never sets `effort`, so one persona can run a mechanical stage at `low` and a design stage at `xhigh` without a second definition. `/workflows` shows the requested and any substituted model per agent [D]; that is the "resolved model recorded per run" the proposal asks for, at no cost.
+Precedence is per-invocation → frontmatter → `CLAUDE_CODE_SUBAGENT_MODEL` → session [D]. `agent()` accepts `effort` per call [D]. Persona frontmatter never sets `effort`, so one persona can run a mechanical stage at `low` and a design stage at `xhigh` without a second definition. `/workflows` shows the requested and any substituted model per agent [D].
 
-Not in phase one: escalation chains, the Advisor tool, and mid-run arbitration. Workflows cannot pause for input [D], and `PreModelSwitch` fires only on a requested session switch [D], so the escalation design in the Opus PRD §7.8 has no mechanism today. Phase-one resilience is null-tolerant scripts: a stage that fails returns `null`, the script logs it and continues where it can.
+Not in phase one: escalation chains, the Advisor tool, and mid-run arbitration. Workflows cannot pause for input [D], and `PreModelSwitch` fires only on a requested session switch [D]. Phase-one resilience is null-tolerant scripts: a stage that fails returns `null`, the script logs it and continues where it can.
 
 ### 4.6 What phase one deliberately does not build
 
-Everything in proposal §6, plus: hook-enforced gates, a fallback chain, the Advisor tool, Routines, mid-run arbitration, persona switch skills, a `bin/` CLI, any UI. Reasons are in §10.
+Everything in proposal §6, plus: hook-enforced gates, a fallback chain, the Advisor tool, Routines, mid-run arbitration, a `bin/` CLI, any UI, any review mechanism of its own (§4.9). Reasons are in §10.
 
 ### 4.7 Plugin, web app, wrapper, or dashboard
 
-Will's question, answered with a recommendation:
+Will's question, answered:
 
 1. **It is a plugin.** Subagents, workflow scripts, and skills execute only inside Claude Code. A web app cannot run them. The plugin is the product; nothing wraps it.
-2. **Single source of truth rules out a hosted app with its own store.** The family retired local persona overrides twice on exactly this ground [R]. A web app that stores persona or workflow definitions recreates the problem. Anything that edits must edit the same files, and the change must flow through git, the generator, and the tests.
-3. **`/workflows` is the run view** [D]: phases, agent counts, tokens, elapsed time, drill-down to any agent's prompt and result. What it does not show is the static catalog (which workflows exist; which personas, tiers, and models each stage uses) and the per-run interaction graph (which lens asked which lens what).
-4. **The catalog is derivable from files.** Every `ck` workflow declares `phases` and a `personas` list in `meta` (§6.5, §7.5). `meta` is a pure literal [D], so it names the default roster, not a run-time choice. Phase two `/ck:map` emits a Mermaid graph (workflow → phase → persona → tier → model) with one agent and no infrastructure; `/ck:map --run <id>` draws the per-run graph from `panel/*.json`. GitHub renders Mermaid in Markdown.
-5. **If a workbench is ever built**, decide its two halves separately. The *viewer* half reads and never owns; it could be a local page or a published Artifact generated from the plugin's files. The *editor* half must be local, because only a local process can run `generate-agents.sh` and `tests/run.sh` before a commit. The conductor precedent applies: local server plus browser, Tauri dropped [R], Python by preference. Build it only when the files-as-workbench is shown insufficient, which means a specific edit Will could not make in a text editor plus `bump-upstream.sh`.
+2. **Single source of truth rules out a hosted app with its own store.** The family retired local persona overrides twice on exactly this ground [R]. Anything that edits a persona or a workflow edits the same files in the `ck` source checkout, and the change flows through git, the generator, and the tests.
+3. **`/workflows` is the run view in phase one** [D]: phases, agent counts, tokens, elapsed time, drill-down to any agent's prompt and result. What it does not show: the static catalog (which workflows exist; which personas, tiers, and models each stage uses) and the per-run interaction graph (which lens asked which lens what).
+4. **The catalog is derivable from files.** Every `ck` workflow declares `phases` and a `personas` list in `meta`. `meta` is a pure literal [D], so it names the default roster, not a run-time choice. Phase two `/ck:map` emits a Mermaid graph (workflow → phase → persona → tier → model) with one agent and no infrastructure; `/ck:map --run <id>` draws the per-run graph from `panel/*.json`.
+5. **The Workbench will be built, as phase three** [W, 2026-09-08]. It is a rewrite of the conductor dashboard, not an extension of it: a local server and a browser (the shape conductor already settled on [R]), Python by Will's preference, that shows the catalog, run history, cost, and persona usage, and edits personas and workflows against the `ck` source checkout by running the generator and the tests and committing. It reuses conductor's fixture-fenced JSONL cost parser and `pricing.json`. It never hosts a store of definitions. Its own PRD is written after phase one has run for real, because the catalog and run data it displays do not exist yet. §10.3 has the scope as far as it is known today.
 
-### 4.8 Failure handling for the harder user
+### 4.8 Plain language: house style for every message a skill prints
 
-Adapted from the Opus PRD §7.11. This is a phase-one deliverable, not polish: one bad failure is how user 2 abandons a tool.
+Adapted from the Opus PRD §7.11. Clare is proficient, so this is house style rather than protection. Three rules:
 
-Three rules for every message the skills print:
-
-1. Never show a stack trace, a model name, or a token count.
+1. Never show a stack trace.
 2. Always name the file that holds the work completed so far.
 3. Always give exactly one next action.
 
-Three failure classes and what she sees:
+Model names and costs may appear once, in the closing line of a run ("Three reviewers on three models; about $0.80"), never as a choice the user must make to proceed. Will's escape hatch: `/workflows` shows every agent, model, and token count.
+
+Three failure classes and what the user sees:
 
 | Failure | What she sees | What she can do |
 |---|---|---|
@@ -276,128 +348,138 @@ Three failure classes and what she sees:
 | A stage fails after retries | "I couldn't finish the requirements section. Everything up to it is saved in `docs/PRD.md`. Run `/ck:prd` again to continue from there." | Run it again. Completed stages are skipped |
 | A panel lens or the whole workflow is unavailable | "One of the three reviewers didn't answer. The memo is based on the other two and says so." or "Claude is at capacity right now. Run `/ck:prd` again in a few minutes." | Wait or retry |
 
-Will's escape hatch: `/workflows` shows every agent, model, and token count for anyone who wants them. The skills never print them.
+### 4.9 Reviews: Claude's built-in review and comment system
 
+Will's rule, recorded 2026-09-05 and confirmed 2026-09-08: every document for review arrives as a page he can comment on; every design for review arrives as a gallery of labeled variants, side by side, that he can comment on. That page is how feedback is given. Claude holds every comment, then works through and resolves all of them once the reviewer says "done". The page is Claude's own review and comment system, in the Claude desktop app or at claude.ai; `ck` builds nothing of its own for this. [W]
 
-### 4.9 Review pages: the feedback channel
+Mechanism, verified in this session's tool contract: a published page is private to the account; viewers switch it to comment mode and leave threads on any passage or element; Claude reads the threads, replies on threads a person has sent to Claude, republishes the same URL, and marks each thread resolved.
 
-Will's rule, recorded 2026-09-05: whenever a workflow produces a document for review, it arrives as a web page he can comment on; whenever there are designs to review, they arrive as mockups with labeled variants side by side, also commentable. That page is how he gives feedback. Claude holds every comment, then works through and resolves all of them once he says he is done.
+Every review page carries these five steps in its banner, because a page that says "comment anywhere" without them is a page nobody can comment on [R, 2026-09-08]:
 
-Mechanism, verified in this session's tool contract: a published Artifact is a private HTML page on claude.ai; viewers leave comment threads on it; Claude reads the threads, replies on threads a person has sent to Claude, republishes the same URL, and marks each thread resolved.
+1. Open the link signed in to your Claude account.
+2. Switch the page to comment mode from the bar at the top.
+3. Click the passage or the variant and type.
+4. Put `@claude` in the comment so Claude can reply to it and resolve it.
+5. Say "done" in the chat when you have finished.
 
 Rules:
 
 1. One page per review, republished in place; never a new URL for a revision.
-2. When the author says "done", read every thread, apply each change to the file on disk (the artifact is the state, §4.3), republish, and resolve each thread with one line saying what changed. A comment Claude will not act on gets a reply with the reason and stays open.
-3. Mockup pages show labeled variants (A, B, C); the author comments to pick one or ask for changes.
-4. Availability is a Phase 0 spike (§8.0, S5). Every gate keeps a file-edit path that works without it.
+2. When the reviewer says "done", Claude reads every thread, applies each change to the file on disk (the document is the state, §4.3), republishes, and resolves each thread with one line saying what changed. A comment Claude will not act on gets a reply with the reason and stays open. A thread not sent to Claude is applied and reported in chat, because it cannot be replied to or resolved.
+3. Document pages render the document with a sticky table of contents, so a comment can point at a section.
+4. Gallery pages show labeled variants (A, B, C) side by side, each with its rationale and trade-off, each commentable; the reviewer comments to pick one or ask for changes. Brand galleries and design galleries use one page shape (§7.8, §7.9).
+5. Availability of the publishing tool inside local Claude Code is Phase 0 spike S5 (§8.0). Every gate keeps a file-edit path that works without it: "Edit the file and run the command again; I'll pick up from your edits."
 
-Phase one uses this at Gate 1 of `/ck:prd` (§7.6). Mockup review pages arrive with `/ck:brand-guide` in phase two.
+Phase one uses this at every gate in §4.2's table, and for the PRD you are reading.
 
 ---
 
-## 5. Personas as subagents
+## 5. Personas as subagents and switch commands
 
-### 5.1 Source of truth and vendoring
+### 5.1 Source of truth
 
-`claude-team-cli/profiles/<name>.md` and `profiles/tiers.conf` remain the only place persona text and tiers are edited [R]. `ck` vendors them:
+`ck/profiles/<name>.md` and `ck/tiers.conf` are the only place persona text and tiers are edited. They are imported once from the old tool's `profiles/` directory at its commit `b4b211fbf4ec6f4d365a550b55e9981610ed7dda`, in the first commit of the `ck` repository, and are owned by `ck` from then on. There is no vendored copy, no lock file, no sync script, and no drift check against anything outside the repository. [W, 2026-09-08]
 
-- `upstream/profiles/*.md` and `upstream/tiers.conf`: byte-for-byte copies at a pinned commit.
-- `scripts/upstream.lock`: `repo=https://github.com/code-katz/claude-team-cli` and `commit=<40-hex>`. Today's `main` is `b4b211fbf4ec6f4d365a550b55e9981610ed7dda`.
-- `scripts/bump-upstream.sh <sha>`: fetches the commit, replaces `upstream/`, regenerates `agents/`, updates the lock, and prints the diff of `agents/`.
+Two files are generated from every profile, and one index from all of them:
 
-A byte copy at a pinned SHA with a CI equality check is a cache, not a second source. It keeps the drift test offline, matching team-cli's rule that network checks are opt-in (its link check runs on dispatch, not on push) [R]. [P]
+| Generated file | Purpose | Registered as |
+|---|---|---|
+| `agents/<name>.md` | The persona as a subagent, on its tier, with interactive behaviors rewritten for output (§5.2, §5.4) | `ck:<name>` |
+| `skills/<name>/SKILL.md` | The persona as a session switch: the profile with its interactive behaviors intact, because a session has a user (§5.6) | `/ck:<name>` |
+| `profiles/ROSTER.md` | One line per persona: name, role, tier, one-sentence domain. Read by `/ck:team` and `/ck:opportunity` when choosing a cast | none |
 
-### 5.2 Generation rule
+`scripts/generate.sh` produces all three; CI fails on drift between `profiles/` and the generated files (§9). The two coordinator profiles are not imported: their routing behavior becomes `/ck:team` (§6.5) and `/ck:next` (§6.12), and their session greeting has no equivalent in a plugin.
 
-`scripts/generate-agents.sh` is a fork of team-cli's generator [R] with the transform in §5.4. For each `upstream/profiles/<name>.md` except `coordinator*`:
+### 5.2 Generation rule for agents
+
+For each `profiles/<name>.md`:
 
 ```
 ---
 name: <name>
-description: <Display>, <Role>. Reviews and drafts from the <role, lowercase> perspective for ck panels and delegation; returns structured findings.
+description: <Display>, <Role>. Reviews and drafts from the <role, lowercase> perspective for ck workflows and delegation; returns structured findings.
 model: <the tiers.conf value, verbatim>
 ---
 
-<!-- GENERATED from upstream/profiles/<name>.md at <commit> by scripts/generate-agents.sh; edit upstream, not this file. -->
+<!-- GENERATED from profiles/<name>.md by scripts/generate.sh; edit the profile, not this file. -->
 
 <profile body with "## Required Interactive Behaviors" transformed per §5.4, "## Greeting" removed>
 
 ---
 
-You are running as a delegated subagent. When the prompt names a run directory, read inputs from it and write outputs only there. If a schema is imposed, fill every required field; anything you would have asked goes in `questions`. Return findings first, detail after.
+You are running as a delegated subagent. When the prompt names a project root and a run directory, read inputs from the project and write outputs only where the prompt says. If a schema is imposed, fill every required field; anything you would have asked goes in `questions`. Return findings first, detail after.
 ```
 
 Frontmatter carries `name`, `description`, `model` and nothing else. Not set, with the reason:
 
 | Field | Why not in phase one |
 |---|---|
-| `effort` | Would override the session effort for every panel run; keep the policy in one place (the session) until the drill shows a need |
-| `tools`, `disallowedTools` | Agents must write under the run directory; per-path scoping is not available; revisit after the drill |
+| `effort` | Effort belongs to the stage, set by the script (§4.5) |
+| `tools`, `disallowedTools` | Agents must write under `<project-repo>`; per-path scoping is not available; revisit after the drill |
 | `maxTurns` | Workflow caps are the budget guard in phase one |
 | `color` | Cosmetic; the style guide assigns colors to projects, not personas |
 | `permissionMode`, `hooks`, `mcpServers` | Ignored for plugin agents [D] |
 
 ### 5.3 Tier table
 
-From proposal §5.6, with the seven unassigned personas placed by this PRD (§3.3 item 4). The `Model` column is what `tiers.conf` must say after the prerequisite team-cli PR (§8.4); `ck` copies it verbatim.
+`ck/tiers.conf`, format `<persona> <model>`, one line each. Three tiers [W, 2026-09-08]; the seven personas the proposal left unassigned are placed by role.
 
-| Persona | Role | Tier | Model | Change from today |
+| Persona | Role | Tier | Model | Change from the imported file |
 |---|---|---|---|---|
-| akira | Backend Engineering | Judgment | `claude-opus-5` | from Fable 5 |
-| river | Product Manager | Judgment | `claude-opus-5` | from Fable 5 |
-| morgan | Security Engineering | Judgment | `claude-opus-5` | from Fable 5 |
-| sage | Business Advisor | Judgment | `claude-opus-5` | from Fable 5 |
-| jordan | Data and ML | Judgment | `claude-opus-5` | from Fable 5 |
-| reiner | Tabletop Game Designer | Judgment | `claude-opus-5` | from Fable 5 (placed by this PRD) |
-| toni | Product Marketing | Judgment | `claude-opus-5` | from Opus 4.8 |
-| kai | UX Design and Visual Art | Judgment | `claude-opus-5` | from Opus 4.8 |
-| iris | Brand and Illustration | Judgment | `claude-opus-5` | from Opus 4.8 |
-| quinn | Project Manager | Judgment | `claude-opus-5` | from Opus 4.8 |
-| casey | Data Analyst | Judgment | `claude-opus-5` | from Opus 4.8 |
-| cornelius | Military Historian | Judgment | `claude-opus-5` | from Opus 4.8 (placed by this PRD) |
-| ernie | WW2 Narrative Author | Judgment | `claude-opus-5` | from Opus 4.8 (placed by this PRD) |
-| rez | Cyberpunk Genre Advisor | Judgment | `claude-opus-5` | from Opus 4.8 (placed by this PRD) |
-| tracy | Fantasy Genre Advisor | Judgment | `claude-opus-5` | from Opus 4.8 (placed by this PRD) |
-| travolta | Fantasy Narrative Author | Judgment | `claude-opus-5` | from Opus 4.8 (placed by this PRD) |
-| noon | Cyberpunk Narrative Author | Judgment | `claude-opus-5` | from Opus 4.8 (placed by this PRD) |
+| river | Product Manager | Judgment | `claude-fable-5-1` | Fable 5 to Fable 5.1 |
+| akira | Backend Engineering | Judgment | `claude-fable-5-1` | Fable 5 to Fable 5.1 |
+| morgan | Security Engineering | Judgment | `claude-fable-5-1` | Fable 5 to Fable 5.1 |
+| sage | Business Advisor | Judgment | `claude-fable-5-1` | Fable 5 to Fable 5.1 |
+| jordan | Data and ML | Judgment | `claude-fable-5-1` | Fable 5 to Fable 5.1 |
+| reiner | Tabletop Game Designer | Judgment | `claude-fable-5-1` | Fable 5 to Fable 5.1 |
+| toni | Product Marketing | Craft | `claude-opus-5` | Opus 4.8 to Opus 5 |
+| kai | UX Design and Visual Art | Craft | `claude-opus-5` | Opus 4.8 to Opus 5 |
+| iris | Brand and Illustration | Craft | `claude-opus-5` | Opus 4.8 to Opus 5 |
+| quinn | Project Manager | Craft | `claude-opus-5` | Opus 4.8 to Opus 5 |
+| casey | Data Analyst | Craft | `claude-opus-5` | Opus 4.8 to Opus 5 |
+| cornelius | Military Historian | Craft | `claude-opus-5` | Opus 4.8 to Opus 5 |
+| ernie | WW2 Narrative Author | Craft | `claude-opus-5` | Opus 4.8 to Opus 5 |
+| rez | Cyberpunk Genre Advisor | Craft | `claude-opus-5` | Opus 4.8 to Opus 5 |
+| tracy | Fantasy Genre Advisor | Craft | `claude-opus-5` | Opus 4.8 to Opus 5 |
+| travolta | Fantasy Narrative Author | Craft | `claude-opus-5` | Opus 4.8 to Opus 5 |
+| noon | Cyberpunk Narrative Author | Craft | `claude-opus-5` | Opus 4.8 to Opus 5 |
 | sasha | Frontend Engineering | Execution | `claude-sonnet-5` | unchanged |
 | alex | DevOps and Platform | Execution | `claude-sonnet-5` | unchanged |
 | robin | QA and Testing | Execution | `claude-sonnet-5` | unchanged |
 | piper | Tabletop Playtester | Execution | `claude-sonnet-5` | unchanged |
 
-Workflow-stage tiers, set in scripts, never on a persona: Deep research, `claude-fable-5-1` (the panel's decorrelation lens in phase one; deep passes in phase two); Classification, `claude-haiku-4-5-20251001` (the validator).
+Six on Fable 5.1, eleven on Opus 5, four on Sonnet 5. Stage tiers (research, classification, synthesis) are set in scripts, never on a persona (§4.5).
 
-Two [P] notes for the team-cli PR: (a) aliases `opus` and `sonnet` would let the tier follow the current generation without a file edit; the resolved model is recorded per agent in `/workflows` [D]; (b) moving River and Akira off Fable is a reasoning-tier downgrade for the two personas that write the PRD. The proposal's argument is price (Opus 5 at half) and Fable's cache advantage mattering most on long-horizon research. The 90-day usage data and the panel disagreement rate are the check; if PRD quality drops, the change is one line in `tiers.conf`.
+Fable 5.1 rather than Fable 5: same price [D], newer generation. Full model IDs rather than aliases, so a tier changes only when someone edits this file; the resolved model is visible per agent in `/workflows` [D]. [P]
 
 ### 5.4 The interactive-behavior rewrite
 
-Every profile has a `## Required Interactive Behaviors` section written as questions to the user (River: Three Whys, V0 Challenge, Premortem). team-cli's generator strips it from the slash command and keeps it in the subagent [R]. A subagent cannot ask [D]. The transform is mechanical, identical for all 21 personas, and adds no per-persona prose:
+Every profile has a `## Required Interactive Behaviors` section written as questions to the user (River: Three Whys, V0 Challenge, Premortem). A subagent cannot ask [D]. The transform is mechanical, identical for all 21 personas, and adds no per-persona prose:
 
 1. Rename the heading to `## Required Behaviors (subagent form)`.
 2. Insert directly under it:
 
    > You are running with no user present. Every behavior below still applies, in output form. Where a behavior tells you to ask, halt, interrupt, or require an answer before proceeding: do not stop. State the question verbatim under `questions` (addressed to `author` or to a named teammate), state the assumption you will proceed on, and proceed. Where a behavior produces an artifact (table, diagram, scenario, counter-proposal, pitch), produce it in full. Where it requires a decision from the user, give your recommendation with evidence and mark the decision as open.
 
-3. Keep the upstream text verbatim beneath.
+3. Keep the profile text verbatim beneath.
 
-What the preamble makes River do, and what `prd-draft.js` asks for by name:
+What the preamble makes River do, and what the scripts ask for by name:
 
-| Upstream behavior | Subagent form |
+| Profile behavior | Subagent form |
 |---|---|
-| Three Whys: ask "Why?" up to three times | Write the root-cause chain yourself from the brief (solution → why → why → why), each step more specific, until the user pain is exposed or the request is shown to address a symptom; say which. A why the brief cannot answer becomes a `questions` entry with your assumption |
+| Three Whys: ask "Why?" up to three times | Write the root-cause chain yourself from the input (solution → why → why → why), each step more specific, until the user pain is exposed or the request is shown to address a symptom; say which. A why the input cannot answer becomes a `questions` entry with your assumption |
 | V0 Challenge: propose a V0 cutting half the scope and require a decision | Always include the V0 counter-proposal, what it cuts, whether it would still move the metric, and your recommendation with evidence. The decision stays with the author and is listed as open |
-| Premortem: write the failure scenario and ask "What went wrong?" | Write the 2-3 sentence scenario in which this shipped on time and missed the metric, name the assumption it exposes, add that assumption to the Assumptions section, and leave the question verbatim for the author's gate |
+| Premortem: write the failure scenario and ask "What went wrong?" | Write the 2-3 sentence scenario in which this shipped on time and missed the metric, name the assumption it exposes, add that assumption to the Assumptions section, and leave the question verbatim for the author's review |
 
-The interactive versions of River's three behaviors live in `skills/prd/SKILL.md`, for the optional interview and the review, where there is a user. A CI check asserts the skill carries the three behavior headings from `upstream/profiles/river.md`, so a renamed behavior fails the build instead of diverging silently (§9).
+The interactive versions of River's three behaviors live in `skills/prd/SKILL.md` for the optional interview, and in `skills/river/SKILL.md` for the switch. A CI check asserts both carry the three behavior headings from `profiles/river.md`, so a renamed behavior fails the build instead of diverging silently (§9).
 
-### 5.5 Instrumentation hook
+### 5.5 Hooks
 
 `hooks/hooks.json`:
 
 ```json
 {
-  "description": "ck: persona usage log, so the 90-day prune has data",
+  "description": "ck: persona usage log, and a check that the old tool is gone",
   "hooks": {
     "SubagentStart": [
       {
@@ -406,138 +488,401 @@ The interactive versions of River's three behaviors live in `skills/prd/SKILL.md
           { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/usage-log.sh\"" }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/check-prereqs.sh\"" }
+        ]
+      }
     ]
   }
 }
 ```
 
-`scripts/usage-log.sh` reads the hook's stdin JSON, appends one line `{"ts":"<UTC>","agent_type":"ck:<name>","session_id":"<id>","cwd":"<path>"}` to `${CLAUDE_PLUGIN_DATA}/usage.jsonl`, and always exits 0. Facts it relies on: `SubagentStart` matchers accept plugin-scoped names such as `^my-plugin:reviewer$`; stdin carries `agent_type` and `session_id`; `CLAUDE_PLUGIN_DATA` is exported to hook processes and survives plugin updates [D]. It never blocks: a logging failure must not stop a persona.
+`scripts/usage-log.sh` reads the hook's stdin JSON, appends one line `{"ts":"<UTC>","agent_type":"ck:<name>","session_id":"<id>","cwd":"<path>"}` to `${CLAUDE_PLUGIN_DATA}/usage.jsonl`, and always exits 0. Facts it relies on: `SubagentStart` matchers accept plugin-scoped names such as `^my-plugin:reviewer$`; stdin carries `agent_type` and `session_id`; `CLAUDE_PLUGIN_DATA` is exported to hook processes and survives plugin updates [D]. It never blocks: a logging failure must not stop a persona. The 90-day review reads this file and answers proposal §8.4.
 
-The 90-day review reads this file and answers proposal §8.4.
+`scripts/check-prereqs.sh` looks for `~/.claude/team/`, `~/.local/bin/claude-team`, and the old tool's block in `~/.claude/CLAUDE.md`. If any is present it prints one plain sentence ("The old team tool is still installed and its persona commands will collide with ck's. Remove it with the steps in the ck README.") and exits 0. It never blocks a session.
 
-### 5.6 Acceptance criteria
+### 5.6 Persona switch commands
 
-- [ ] `agents/` holds exactly one file per `upstream/profiles/*.md` excluding `coordinator*` (21 today).
-- [ ] Every agent's `model:` equals its `tiers.conf` line; `name:` equals the filename and contains no colon; `## Handoff Brief` present; `## Greeting` absent; the §5.4 preamble present; the generated-from comment names the lock's commit.
-- [ ] Regenerating from `upstream/` produces no diff against the committed `agents/`.
-- [ ] In a session with the plugin enabled, `@ck:river` appears in the subagent typeahead and `Agent({subagent_type: "ck:river", ...})` runs on `claude-opus-5` (visible in the transcript).
+The session-switch route survives as `/ck:<name>`, one generated skill per persona, `disable-model-invocation: true`, description "Switch this session to <Display>, <Role>." The body is the profile verbatim, including `## Required Interactive Behaviors` and `## Greeting`, because a switched session has a user to ask. One sentence is prepended: "You are now <Display> for the rest of this session. You run on this session's model, not on your tier; to run on your tier, delegate to the `ck:<name>` subagent."
+
+The three hand-off routes, all inside `ck`:
+
+| Route | How | Runs on |
+|---|---|---|
+| Switch this session | `/ck:river` | The session's model |
+| Delegate one task | `Agent({ subagent_type: "ck:river" })` | River's tier |
+| Run a pipeline stage or a fan-out | The `ck` workflows | Each persona's tier, per stage |
+
+The fourth route the old tool offered, a separate terminal session per persona, is what the workflows replace. What still needs a separate session (a long parallel build in its own worktree) is `/ck:feature`'s job in phase two.
+
+### 5.7 Acceptance criteria
+
+- [ ] `agents/` and `skills/<name>/` each hold exactly one file per `profiles/*.md` (21 today); `profiles/ROSTER.md` has 21 rows.
+- [ ] Every agent's `model:` equals its `tiers.conf` line; `name:` equals the filename and contains no colon; `## Handoff Brief` present; `## Greeting` absent; the §5.4 preamble present; no `effort:` line.
+- [ ] Every switch skill carries `## Required Interactive Behaviors` and `## Greeting` verbatim from its profile, and the prepended sentence.
+- [ ] Regenerating from `profiles/` produces no diff against the committed generated files.
+- [ ] In a session with the plugin enabled, `@ck:river` appears in the subagent typeahead and `Agent({subagent_type: "ck:river", ...})` runs on `claude-fable-5-1` (visible in the transcript); `/ck:river` switches the session.
 - [ ] After one `ck:` delegation, `${CLAUDE_PLUGIN_DATA}/usage.jsonl` has one new line with `agent_type` set.
+- [ ] With `~/.claude/team/` present, a new session prints the one-sentence warning; without it, nothing.
 
 ---
 
-## 6. `/ck:panel`
+## 6. The pipeline
 
-### 6.1 Purpose
+### 6.1 Order, inputs, and outputs
 
-Proposal goal 4: adversarial and complementary input on one decision, from the product lens, the marketing lens, and the UX lens, each on a different model, each reading its own evidence, each forced to argue against itself. The output is a decision memo that shows where the lenses disagree and leaves the decision to the author (proposal §5.5). The memo format follows Will's own panel brief: agreement is flagged as low-information, kill conditions are quoted and checked, and unique findings and unchecked areas are listed.
+Each command runs when its required inputs exist in `<project-repo>` and names the missing one in a sentence when they do not. Optional inputs are read when present and skipped when absent. The order below is the order `/ck:next` recommends; any command can run on its own.
 
-### 6.2 Invocation
+| Step | Command | Requires | Reads if present | Writes | Gate |
+|---|---|---|---|---|---|
+| 1 | `/ck:opportunity` | An idea in a sentence | `docs/market-research.md`, `docs/TEAM.md` | `docs/opportunity.md` | Review page |
+| 2 | `/ck:market-research` | `docs/opportunity.md` or `docs/brief.md` or a focus in a sentence | both | `docs/market-research.md` | None |
+| 3 | `/ck:brief` | An idea in a sentence, or `docs/opportunity.md` | `docs/market-research.md` | `docs/brief.md` | None |
+| 4 | `/ck:team` | `docs/brief.md` or `docs/opportunity.md` | `docs/PRD.md`, `docs/market-research.md` | `docs/TEAM.md` | None |
+| 5 | `/ck:prd` | `docs/brief.md` | `docs/opportunity.md`, `docs/market-research.md`, `docs/TEAM.md`, `ROADMAP.md` | `docs/PRD.md`, `docs/decisions/<ts>-prd-review.md` | Review page |
+| 6 | `/ck:roadmap` | `docs/PRD.md` | `docs/opportunity.md`, `docs/market-research.md`, `docs/TEAM.md` | `ROADMAP.md` | None |
+| 7 | `/ck:architecture` | `docs/PRD.md`, `ROADMAP.md` | `docs/TEAM.md`, `docs/opportunity.md` | `docs/ARCHITECTURE.md`, `docs/decisions/<ts>-architecture-review.md` | Review page |
+| 8 | `/ck:brand-guide` | `docs/opportunity.md` or `docs/brief.md` | `docs/PRD.md`, `docs/market-research.md` | `brand/`, `docs/decisions/<ts>-brand-direction.md`, `docs/brand-guide.md` | Two gallery pages |
+| 9 | `/ck:design <feature>` | `docs/PRD.md` | `docs/brand-guide.md`, `brand/final/`, `docs/ARCHITECTURE.md` | `docs/design/<feature>/` | Gallery page |
+| any | `/ck:panel <question>` | A question | Anything named as context | `docs/decisions/<ts>-<slug>.md` | None |
+| any | `/ck:next` | Nothing | The table above | Nothing | None |
+
+Every subsection below has the same parts: purpose, invocation, cast and models, stages, the document, the gate, cost, acceptance. Stages are given as the `meta.phases` of the script. Four scripts are written in full in the appendices (`panel`, `brief`, `draft`, `team`); the other five are specified here to the stage level and follow the same conventions (required args, `startAt`, null-tolerant stages, a validator, the document path returned in the schema).
+
+### 6.2 `/ck:opportunity`
+
+**Purpose.** The first document on a new product: is this worth doing, for whom, in what market, in what technical shape, and what would have to be true. Modelled on the NIGHTGRID opportunity analysis, which is a multi-persona document: each lens writes its own section, and River holds the frame, the stage gates, and the risks. [W, 2026-09-08]
+
+**Invocation.** `/ck:opportunity <the idea in a sentence or two>`. With `docs/opportunity.md` already present, the skill offers to revise it (re-running Sections and Assemble on the comments) or start over.
+
+**Cast and models.** River (Fable 5.1) frames and assembles. Contributors are chosen by River from `profiles/ROSTER.md` and `docs/TEAM.md` when it exists, up to four: Toni (Opus 5) always, for market context, positioning, and a go-to-market sketch; Akira (Fable 5.1) always, for the technical shape; a domain seat for the product's kind (Reiner for a game, Jordan for a data product, Sage for a business-model question, Cornelius for a historical setting); Sage optionally, for stage gates and monetization when the domain seat is not Sage. Contributors whose sections make claims about the world use web search and cite a source per claim (Phase 0 spike S7 confirms web search is available to subagents inside a workflow).
+
+**Stages** (`workflows/opportunity-draft.js`, `meta.personas: ['river', 'toni', 'akira', 'sage', 'reiner', 'jordan']`):
+
+| Phase | Agents | What happens | Writes |
+|---|---|---|---|
+| Frame | 1, `ck:river` | Reads the idea, the roster, and `docs/TEAM.md` and `docs/market-research.md` if present. Writes the concept statement and the hypothesis, chooses the contributors with a reason each, and writes one brief per contributor: the questions that section must answer | `<runDir>/frame.json` |
+| Sections | Up to 4, in parallel, `agentType` per contributor, `effort: 'high'` | Each writes its section to the contract's section spec for its lens, with sources for external claims and its Handoff Brief | `<runDir>/sections/<persona>.md` |
+| Assemble | 1, `ck:river` | Writes `docs/opportunity.md` to the contract: summary, concept, market context, one section per lens, stage gates, monetization, risks, open questions, sources. Applies River's behaviors in subagent form: the root-cause chain under the problem; a smaller first version under scope; the premortem left for the review | `docs/opportunity.md` |
+| Validate | 1 neutral, Haiku 4.5, `effort: 'low'`; then `ck:river` to revise, at most twice | Checks the document against the contract checklist | `docs/opportunity.md` |
+
+Seven to nine agents. Under the "medium" size guideline [D].
+
+**The document.** `docs/opportunity.md`, contract §7.1.
+
+**The gate.** The skill publishes the document as a review page (§4.9) with one question at the top: "Imagine this was built and nobody wanted it. What did we get wrong?" On "done" it applies every comment, republishes, resolves, and finalizes inline with `ck:river` (fold the answer into Risks and Assumptions; resolve answered open questions; re-check the contract).
+
+**Cost.** About $2.50 per run (Appendix I).
+
+**Acceptance.**
+- [ ] On a fixture idea for a game, River chooses Reiner as the domain seat and says why in `frame.json`; on a fixture idea for a data product, Jordan.
+- [ ] Every external claim in Market context carries a source; the Sources section lists each once.
+- [ ] `docs/opportunity.md` has every contract section in order and passes the validator.
+- [ ] The review page shows the premortem question at the top and the five comment steps in the banner; two comments are applied and resolved with one-line replies.
+- [ ] Re-running with the document present offers revise or start over, and revise re-runs only Sections and Assemble.
+
+### 6.3 `/ck:market-research`
+
+**Purpose.** A deeper market pass than the brief's, run as a fan-out: several questions researched in parallel on the web, cross-checked, and written up with a source per claim. The shape of a deep-research run: plan, fan out, cross-check, cite. [W, 2026-09-08]
+
+**Invocation.** `/ck:market-research [focus in a sentence]`. With no focus, the questions come from `docs/opportunity.md` or `docs/brief.md`; with neither and no focus, the workflow stops and names the missing input.
+
+**Cast and models.** Toni (Opus 5) plans and writes. Research agents are neutral, on Sonnet 5 at `effort: 'medium'`, one per question, with web search. The cross-checker is neutral on Sonnet 5. The validator is Haiku 4.5.
+
+**Stages** (`workflows/market-research.js`, `meta.personas: ['toni']`):
+
+| Phase | Agents | What happens | Writes |
+|---|---|---|---|
+| Plan | 1, `ck:toni` | Reads the inputs. Writes four to six research questions across: market size and trends; competitors and substitutes; customers, segments, and channels; pricing and business models; platform, legal, or regulatory constraints. Each question names what a good answer contains | `<runDir>/plan.json` |
+| Research | 4 to 6, in parallel, neutral, Sonnet 5, `effort: 'medium'` | Each answers one question from the web: findings, each with a source URL, a date, and a confidence; contradictions it noticed; what it could not find | `<runDir>/research/<n>.json` |
+| Cross-check | 1 neutral, Sonnet 5 | Every claim must carry a source or be marked unverified; claims that contradict each other across researchers are listed with both sources; stale sources (older than 18 months for a moving market) are flagged | `<runDir>/crosscheck.json` |
+| Write | 1, `ck:toni` | Writes `docs/market-research.md` to the contract: summary; market size and trends; competitors table; customers and channels; pricing and business models; constraints; contradictions and unknowns; implications for positioning; sources | `docs/market-research.md` |
+| Validate | 1 neutral, Haiku 4.5, `effort: 'low'`; Toni revises at most once | Contract checklist, including "every claim in the body has a source in Sources" | `docs/market-research.md` |
+
+Eight to ten agents. Runnable headless; the first candidate for a Routine in phase two.
+
+**The document.** `docs/market-research.md`, contract §7.2. No gate: the author reviews by comment or edit when they want to, and `/ck:brief` and `/ck:prd` read it as it stands.
+
+**Cost.** About $1.20 per run (Appendix I).
+
+**Acceptance.**
+- [ ] `plan.json` has between four and six questions covering at least four of the five areas.
+- [ ] `/workflows` shows the Research phase running its agents in parallel on Sonnet 5.
+- [ ] Every body claim carries a footnote or inline source that appears in Sources; a fixture with a planted contradiction (two researchers given conflicting seed facts) appears in Contradictions and unknowns.
+- [ ] With no inputs and no focus, the workflow stops with one sentence naming what to run first.
+
+### 6.4 `/ck:brief`
+
+**Purpose.** The short document that governs the expensive PRD run: the problem, the person, the number, the scope, and a basic market pass. One line of idea text in; `docs/brief.md` out; nothing asked. [W, 2026-09-08] for the market pass.
+
+**Invocation.** `/ck:brief <the idea in a sentence>`, or `/ck:brief` alone when `docs/opportunity.md` exists, in which case the idea and the market context come from it.
+
+**Cast and models.** Toni (Opus 5) for the market pass, with web search; River (Fable 5.1) drafts; Haiku 4.5 validates.
+
+**Stages** (`workflows/brief.js`, Appendix C, `meta.personas: ['toni', 'river']`):
+
+| Phase | Agents | What happens | Writes |
+|---|---|---|---|
+| Market pass | 1, `ck:toni` | Reads `docs/market-research.md` and `docs/opportunity.md` if present and searches only for what they lack. Returns three to five comparable products: what each does, who it is for, its price or model, and the gap this idea would fill; one source each; one paragraph on how crowded the space is | `<runDir>/market.json` |
+| Draft | 1, `ck:river` | Writes `docs/brief.md` to the contract: idea; problem and root-cause chain; user; success metric and leading indicator; comparable products (from Toni's pass, attributed); scope with a smaller first version and a recommendation; non-goals; open questions for the author. River's behaviors in subagent form: the whys are written, not asked; the smaller version is proposed, not negotiated | `docs/brief.md` |
+| Validate | 1 neutral, Haiku 4.5, `effort: 'low'`; then `ck:river` once if needed | Contract checklist; one revision at most | `docs/brief.md` |
+
+Three to four agents. About two minutes.
+
+**The document.** `docs/brief.md`, contract §7.3 (full text: Appendix G).
+
+**The gate.** None. The closing message names the file and gives one action: "Read it, change anything, then run `/ck:team` or `/ck:prd`."
+
+**Cost.** About $0.55 per run (Appendix I).
+
+**Acceptance.**
+- [ ] `docs/brief.md` has the contract's eight sections in order and passes the validator.
+- [ ] Comparable products lists three to five entries with a source each; when `docs/market-research.md` exists, the section cites it and the market pass makes fewer searches (visible in the transcript).
+- [ ] The open-questions list is present even when empty.
+- [ ] The closing message names the file and one next action.
+
+### 6.5 `/ck:team`
+
+**Purpose.** Team selection and roles and responsibilities: which personas are on this product, who owns which document and stage, who reviews, and which seat is missing. "Say you are building a game: do you have the game designer on your team?" [W, 2026-09-08]. This is the old coordinator's routing behavior, written down once per product instead of asked once per session.
+
+**Invocation.** `/ck:team`. Reads `docs/opportunity.md`, `docs/brief.md`, `docs/PRD.md`, `docs/market-research.md`, whichever exist; requires at least one of the first two. With `docs/TEAM.md` present, re-nominates against the current documents and shows the diff in the closing message.
+
+**Cast and models.** River (Fable 5.1) nominates and assembles. Each nominated persona confirms on its own tier at `effort: 'low'`. Haiku 4.5 validates.
+
+**Stages** (`workflows/team.js`, Appendix D, `meta.personas: [all 21]`):
+
+| Phase | Agents | What happens | Writes |
+|---|---|---|---|
+| Nominate | 1, `ck:river` | Reads the documents and `profiles/ROSTER.md`. Proposes the cast, up to eight: for each pipeline document and stage, an owner and reviewers; for each requirement area in the PRD if present, an owner; and the missing seats: needs no persona covers (legal, audio, localization, a specific domain), with what a person in that seat would own | `<runDir>/nominations.json` |
+| Confirm | Up to 8, in parallel, `agentType` per nominee, `effort: 'low'` | Each nominee reads the documents and its nomination and returns: accept or decline each responsibility with a reason; what it needs from whom before it can start; one risk in its domain; and one seat it thinks is missing | `<runDir>/confirmations/<persona>.json` |
+| Assemble | 1, `ck:river` | Writes `docs/TEAM.md` to the contract: cast table (persona, role, tier, why on this product); roles and responsibilities matrix (document or stage × owner, contributors, reviewers); hand-off order with what each hand-off carries; needs per persona; missing seats; declined nominations and why | `docs/TEAM.md` |
+| Validate | 1 neutral, Haiku 4.5, `effort: 'low'`; River revises at most once | Contract checklist, including "every pipeline document has exactly one owner" | `docs/TEAM.md` |
+
+Up to eleven agents; under the "medium" guideline. The Confirm fan-out is where a persona says "not me, and here is who": a nominee that declines names a replacement from the roster, and River takes it or explains why not.
+
+**The document.** `docs/TEAM.md`, contract §7.5. It is read by `/ck:opportunity` and `/ck:architecture` when choosing contributors and lenses, so a persona added here shows up in the later steps.
+
+**The gate.** None. The author edits or comments when they disagree.
+
+**Cost.** About $1.00 per run (Appendix I).
+
+**Acceptance.**
+- [ ] On the game fixture, Reiner and Piper are nominated and the missing-seats list is non-empty (audio, at least); on the data-product fixture, Jordan and Casey are nominated and Reiner is not.
+- [ ] `/workflows` shows Confirm running the nominees in parallel, each on its tier model, at low effort.
+- [ ] A fixture nominee instructed (via a seeded profile note in the test) to decline produces a replacement in `docs/TEAM.md` with River's reason.
+- [ ] Every pipeline document in §6.1 has exactly one owner in the matrix; the validator passes.
+
+### 6.6 `/ck:prd`
+
+**Purpose.** Proposal goal 3: a PRD that has the same shape every time, in every project, produced by River with the product, marketing, and UX lenses challenging it on three different models before the author sees it. The shape comes from the contract (§7.4); the process comes from the `draft` workflow (§4.1, one drafting engine).
+
+**Invocation.** `/ck:prd [--interview]`. Requires `docs/brief.md`; without it: "Run `/ck:brief <your idea>` first. It takes about two minutes and writes `docs/brief.md`. Then run `/ck:prd` again." With `--interview` and no brief, River interviews in the session (Will's path, Appendix E step 2) and writes the brief from the answers.
+
+**Cast and models.** River (Fable 5.1) drafts and rewrites. The panel: River on Fable 5.1 reading the brief, `docs/opportunity.md`, and `ROADMAP.md`; Toni on Opus 5 reading `docs/market-research.md` and `docs/opportunity.md`; Kai on Sonnet 5 (moved down from Opus 5 by the script, §4.5) reading `brand/` and `docs/design/`. Haiku 4.5 validates. Neutral synthesis inherits the session model.
+
+**Stages** (`workflows/draft.js` with `args.artifact: 'prd'`, Appendix B, `meta.personas: ['river', 'akira', 'toni', 'kai', 'morgan', 'alex', 'jordan']`; stages are skipped when `args.startAt` names a later one):
+
+| Phase | Agents | What happens | Writes |
+|---|---|---|---|
+| Draft | 1, `ck:river` | Reads `docs/brief.md`, the optional inputs, and the PRD contract. Writes `docs/PRD.md` to the contract's section order. Tags every claim not taken from the brief `[C1]`, `[C2]`, ... so the lenses can address it. Root-cause chain and V0 counter-proposal in subagent form. No premortem yet | `docs/PRD.md` |
+| Validate | 1 neutral, Haiku 4.5, `effort: 'low'`; then `ck:river` to revise, at most twice | Checks the draft against the contract checklist; returns `{valid, missing[], notes}`. On `missing`, River revises in place, keeping every tag. After two revisions the workflow proceeds and logs what is still missing | `docs/PRD.md` |
+| Panel | 4, nested `workflow({scriptPath: pluginRoot + '/workflows/panel.js'})` | Question: "Is this PRD ready for the author's review, and what would you change before it ships?" Material: `docs/PRD.md`. Rationale, read second: `docs/brief.md`. Evidence per lens as above | `panel/*.json`, `docs/decisions/<timestamp>-prd-review.md` |
+| Synthesize | 1, `ck:river` | Rewrites `docs/PRD.md`: revised where the panel showed a claim wrong or unsupported; **Appendix A, Challenged claims** (claim, challenged by, severity, status ∈ upheld, revised, withdrawn, open; resolution; the memo's disagreements and kill conditions reproduced verbatim; nothing deleted); **Appendix B, Premortem** (the scenario, the exposed assumption, the question "What went wrong?" left verbatim for the review) | `docs/PRD.md` |
+
+Seven agents without a revision, up to nine with two. If the nested panel throws, the workflow logs it and synthesizes without it, saying so in the PRD header.
+
+**Launch and wait.** The skill calls the Workflow tool with `scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/draft.js"` and the args in Appendix E, writes the returned run id into `run.json` as `harnessRunId`, tells the user in plain words that the draft is running in the background, and **stops: it waits for the task notification. It does not poll, does not narrate, and does not start other work on this run.** On a stop or failure it prints the §4.8 message naming `docs/PRD.md` and the one action, and records the failed stage in `run.json` so the next run passes the right `startAt`. `${CLAUDE_PLUGIN_ROOT}` expands anywhere in skill content [D].
+
+**The document.** `docs/PRD.md`, contract §7.4 (full text: Appendix G).
+
+**The gate.** The review page (§4.9) with the premortem question at the top. On "done": every comment applied to `docs/PRD.md` (or answered with a reason), the page republished, each thread resolved with one line. File-edit fallback: "Open `docs/PRD.md`, change anything, save, and run `/ck:prd` again; I'll fold your edits in." Either path may trigger a focused re-run of the panel on named sections before finalizing.
+
+**Finalize.** One agent, inline (§4.2): `ck:river` folds the premortem answer into Assumptions and Risks, resolves each open decision as answered, keeps Appendix A intact, checks the result against the contract, writes `docs/PRD.md`, sets `status: final` in `run.json`. The skill prints the path and one next action: "Run `/ck:next`."
+
+**Cost.** About $2.30 per run without a revision, about $2.90 with one, plus the main session's turns (Appendix I).
+
+**Acceptance.**
+- [ ] `/ck:prd` without a brief stops with the one-action message and runs nothing.
+- [ ] `/ck:prd --interview` asks one question at a time; after the second why, `<runDir>/interview.md` already holds the first two answers; killing the session and re-running offers to resume.
+- [ ] `run.json` contains `harnessRunId` before the skill goes idle; `.git/info/exclude` contains `.ck/`; `git status` shows `docs/` files and nothing under `.ck/`.
+- [ ] `/workflows` shows phases Draft, Validate, Panel (with the nested panel's agents on three models), Synthesize; the validator runs on Haiku 4.5; River runs on Fable 5.1.
+- [ ] `docs/PRD.md` has every contract section, an Appendix A with at least one row per finding a lens raised, and an Appendix B with a scenario and the verbatim question.
+- [ ] Stopping the workflow during Panel, then running `/ck:prd` again, continues from Panel without re-drafting (`startAt`).
+- [ ] The review page is published with the five steps in its banner; two comments are applied and resolved with one-line replies; a thread not sent to Claude is applied and reported in chat.
+- [ ] Without the publishing tool: the file-edit message is printed; an edit to `docs/PRD.md` followed by `/ck:prd` finalizes from the edited file.
+- [ ] The final PRD is at `docs/PRD.md` with `status: final` in `run.json`, and its checklist passes when re-validated by hand.
+- [ ] `skills/prd/SKILL.md` contains the three behavior headings from `profiles/river.md` (CI-checked).
+
+### 6.7 `/ck:roadmap`
+
+**Purpose.** The roadmap in the family's own format (the roadmap skill's `ROADMAP.md` structure [R]): a current-state snapshot, opportunities in three tiers with why-now and a success signal, recommended sequencing, open questions, an OKR table, and a revision history. River prioritizes; Quinn sequences.
+
+**Invocation.** `/ck:roadmap`. Requires `docs/PRD.md`. With `ROADMAP.md` present, runs in update mode: Section 1 is rewritten and a revision-history entry is appended, per the roadmap skill's own workflow [R].
+
+**Cast and models.** River (Fable 5.1), Quinn (Opus 5), Haiku 4.5 validates.
+
+**Stages** (`workflows/roadmap.js`, `meta.personas: ['river', 'quinn']`):
+
+| Phase | Agents | What happens | Writes |
+|---|---|---|---|
+| Prioritize | 1, `ck:river` | Reads the PRD and the optional inputs. Writes the current-state snapshot and the opportunities in three tiers (ship next; high value, next sprint; strategic), each with why now or why not now and a measurable success signal, and the OKR table | `<runDir>/priorities.json` |
+| Sequence | 1, `ck:quinn` | Writes `ROADMAP.md` to the contract: recommended sequencing with dependencies and what each step unblocks; open questions; the revision-history entry (what changed, why, open questions resolved or added, triggered by) | `ROADMAP.md` |
+| Validate | 1 neutral, Haiku 4.5, `effort: 'low'`; Quinn revises at most once | Contract checklist | `ROADMAP.md` |
+
+Three to four agents.
+
+**The document.** `ROADMAP.md` at the root of `<project-repo>`, contract §7.6, which is the roadmap skill's structure verbatim so that the skill and this workflow produce interchangeable files.
+
+**The gate.** None.
+
+**Cost.** About $0.70 per run (Appendix I).
+
+**Acceptance.**
+- [ ] On a project with no `ROADMAP.md`, the file is created with Section 1 and Section 2 in the roadmap skill's format and passes that skill's lint check [R].
+- [ ] On a project with one, Section 1 is replaced and exactly one revision-history entry is prepended, dated with the run's timestamp.
+- [ ] Every Tier 1 opportunity traces to a numbered PRD requirement.
+
+### 6.8 `/ck:architecture`
+
+**Purpose.** The PRD and the roadmap in; a recommended architecture out, with the alternatives considered, the decision record, and a security, platform, and data challenge on three models before the author sees it. [W, 2026-09-08]
+
+**Invocation.** `/ck:architecture`. Requires `docs/PRD.md` and `ROADMAP.md`; names the missing one otherwise.
+
+**Cast and models.** Akira (Fable 5.1) drafts and rewrites. The panel: Morgan (security) on Fable 5.1 reading `docs/PRD.md` and any `SECURITY.md`; Alex (platform and operations) on Sonnet 5 reading any `infra/`, `Dockerfile`, or CI configuration; Jordan (data) on Opus 5 (moved down from Fable 5.1 by the script) reading `docs/market-research.md` and any `data/` or schema files. Three models. Haiku 4.5 validates.
+
+**Stages.** `workflows/draft.js` with `args.artifact: 'architecture'` (Appendix B): the same Draft, Validate, Panel, Synthesize as §6.6, with the architecture contract, Akira as author, the lenses above, and the panel question "Would you build it this way, and what would you change before the first line of code?"
+
+| Phase | Author's work, specific to this document |
+|---|---|
+| Draft | `docs/ARCHITECTURE.md` to the contract: context and constraints from the PRD and roadmap; quality attributes ranked; the recommended architecture with a Mermaid diagram; components and their responsibilities; data model sketch; integration points; alternatives considered and why not; decision record; sequencing against the roadmap; risks; open questions. Every claim not from the PRD tagged `[C<n>]` |
+| Synthesize | The same appendices as the PRD: Challenged claims, and a Premortem written as "this shipped and fell over in production; what did we get wrong?" |
+
+**The document.** `docs/ARCHITECTURE.md`, contract §7.7.
+
+**The gate.** The review page with the premortem question. Finalize inline with `ck:akira`.
+
+**Cost.** About $2.40 per run (Appendix I).
+
+**Acceptance.**
+- [ ] Without `ROADMAP.md`, the skill stops and names `/ck:roadmap`.
+- [ ] `/workflows` shows Akira on Fable 5.1, and the three lenses on three different models.
+- [ ] `docs/ARCHITECTURE.md` has a rendered Mermaid diagram, an alternatives table with at least two rows, and a decision record with a date.
+- [ ] Every Tier 1 roadmap item is placed in the sequencing section.
+
+### 6.9 `/ck:brand-guide`
+
+**Purpose.** A brand identity, produced the way NIGHTGRID's was: proposal rounds, then candidates, then finalists, each as a gallery of labeled variants the author comments on, ending in a brand direction record and a brand identity guide with the d20Mob guide's structure. [W, 2026-09-08]
+
+**Invocation.** `/ck:brand-guide`. Requires `docs/opportunity.md` or `docs/brief.md`. With `docs/brand-guide.md` present, offers a revision round on the finalists.
+
+**Cast and models.** Iris (Opus 5) leads: marks, palette, type, art direction. Kai (Opus 5) skins UI surfaces in each direction. Toni (Opus 5) supplies one positioning line per direction before Iris starts. Haiku 4.5 validates each gallery against the gallery contract. Output is SVG, HTML, and CSS; raster generation is out of scope.
+
+**Stages** (`workflows/brand.js` with `args.stage` ∈ `proposals | finalists | guide`; the skill runs one stage, gates, then the next; `meta.personas: ['iris', 'kai', 'toni']`):
+
+| Stage | Agents | What happens | Writes |
+|---|---|---|---|
+| Proposals | Toni, then Iris, then Kai, then validator | Toni: a positioning line and an audience note per candidate direction. Iris: four to six brand directions, each with a name treatment, palette, type pairing, mood words, one hero mark, and a rationale and trade-off. Kai: one UI surface per direction in that direction's skin. Assembled as a gallery page, labeled A to F | `brand/proposals/gallery.html`, `brand/proposals/<label>/*.svg` |
+| *Gate 1* | | The gallery as a review page. The author comments to pick two or three and ask for changes | `<runDir>/review-1.md` |
+| Finalists | Iris, Kai, validator | For each pick: the full palette with tokens (background, ink, accent, functional colors), the logo system (primary, secondary, lockups, clear space, minimum size, misuse), the type scale, three UI surfaces from Kai, an app icon. A gallery labeled by the proposal it came from | `brand/finalists/gallery.html`, `brand/finalists/<label>/` |
+| *Gate 2* | | The author picks one and asks for final changes | `<runDir>/review-2.md` |
+| Guide | Iris, Kai, validator | Iris writes the brand direction record (decision, locked layout system, house tokens, theme lineup, rationale, open items, asset list) and `docs/brand-guide.md` to the contract. Kai exports the final assets: SVG marks, tokens as JSON and CSS variables, the UI surfaces | `docs/decisions/<timestamp>-brand-direction.md`, `docs/brand-guide.md`, `brand/final/` |
+
+Four agents per stage; three stages; two gates.
+
+**The documents.** The galleries (contract §7.9, shared with `/ck:design`), the brand direction record and the brand guide (contract §7.8).
+
+**The gates.** Two gallery review pages (§4.9 rule 4). The galleries are also committed files, so the review outlives the page.
+
+**Cost.** About $2.50 across the three stages (Appendix I).
+
+**Acceptance.**
+- [ ] The proposals gallery shows between four and six labeled directions, each with a mark, a palette, a type pairing, a UI surface, a rationale, and a trade-off; the page is under the 16 MB publishing limit.
+- [ ] Gate 1 comments naming two labels produce a finalists gallery with exactly those two.
+- [ ] `docs/brand-guide.md` has every contract section; `brand/final/tokens.css` and `tokens.json` agree; every asset named in the guide's asset list exists under `brand/final/`.
+- [ ] The brand direction record names the chosen direction, the rejected finalists, and the reason.
+
+### 6.10 `/ck:design`
+
+**Purpose.** Clare's J2: one feature from the PRD to design mockups, the same way every time. Three labeled variants in a gallery, one review by comment, the chosen variant at full fidelity with a written spec. [W, 2026-09-08]
+
+**Invocation.** `/ck:design <feature name>`. Requires `docs/PRD.md`; the feature must be findable in it by name or requirement number. If it is not, the skill asks for the requirement text in one question and writes it to `<runDir>/feature.md`. Reads `docs/brand-guide.md` and `brand/final/` when present; without them Kai uses a neutral skin and the gallery says so.
+
+**Cast and models.** River (Fable 5.1, `effort: 'low'`) extracts the feature's requirements. Kai (Opus 5) designs. Robin (Sonnet 5) writes the acceptance checks. Haiku 4.5 validates.
+
+**Stages** (`workflows/design-round.js` with `args.stage` ∈ `variants | refine`; `meta.personas: ['river', 'kai', 'robin']`):
+
+| Stage | Agents | What happens | Writes |
+|---|---|---|---|
+| Variants | River, then Kai, then validator | River: the feature's requirements, acceptance criteria, user, and the PRD's constraints on it, in one page. Kai: three labeled variants (A, B, C) of the feature's screens in device frames, in the brand skin: each with a rationale, a trade-off, which requirement each screen satisfies, and the empty, loading, and error states | `docs/design/<feature>/gallery.html`, `<runDir>/feature.md` |
+| *Gate* | | The gallery as a review page; the author picks a variant and asks for changes | `<runDir>/review.md` |
+| Refine | Kai, then Robin, then validator | Kai: the chosen variant at full fidelity with all states, and `spec.md`: screens, components, interactions, states, copy, accessibility notes, and a requirement-traceability table. Robin: an Acceptance section in `spec.md`, one check per screen against its PRD requirement | `docs/design/<feature>/chosen.html`, `docs/design/<feature>/spec.md` |
+
+Three agents per stage; one gate.
+
+**The documents.** `docs/design/<feature>/gallery.html` (contract §7.9), `chosen.html`, `spec.md` (contract §7.10).
+
+**Cost.** About $1.20 per feature (Appendix I).
+
+**Acceptance.**
+- [ ] On a fixture PRD with three numbered requirements, `/ck:design` for one of them produces a gallery with exactly three labeled variants, each showing the three states.
+- [ ] A gate comment choosing B produces `chosen.html` derived from B and a `spec.md` whose traceability table covers every acceptance criterion of the requirement.
+- [ ] Two features designed in the same project have `spec.md` files with identical section headings (G1, G5).
+- [ ] Without a brand guide, the gallery header says the skin is neutral and names `/ck:brand-guide`.
+
+### 6.11 `/ck:panel`
+
+**Purpose.** Proposal goal 4: adversarial and complementary input on one decision, from the product lens, the marketing lens, and the UX lens, each on a different model, each reading its own evidence, each forced to argue against itself. The output is a decision memo that shows where the lenses disagree and leaves the decision to the author (proposal §5.5). The memo format follows Will's own panel brief: agreement is flagged as low-information, kill conditions are quoted and checked, and unique findings and unchecked areas are listed.
+
+**Invocation.**
 
 ```
-/ck:panel Should the first release include the branding guide step?
+/ck:panel Should the first release include the brand guide step?
 /ck:panel Is this PRD ready for review? --context docs/PRD.md
-/ck:panel <question> --lenses river:claude-opus-5,morgan:claude-fable-5-1,sasha:claude-sonnet-5
+/ck:panel <question> --lenses river:claude-fable-5-1,morgan:claude-opus-5,sasha:claude-sonnet-5
 ```
 
-Claude passes the invocation as `args` [D]:
+Claude passes the invocation as `args` [D]: `runId`, `runDir`, `projectRoot`, `pluginRoot`, `timestamp`, `question` (required; the script throws without them), `contextPath`, `rationalePath`, `memoPath`, `lenses` (optional). Because a workflow is a slash command with no skill in front of it, the main session mints `runId` and `timestamp` with `date -u` and passes absolute paths; the workflow's `description` carries those instructions so a direct invocation still works.
 
-```json
-{
-  "runId": "20260905T210000Z-branding-step",
-  "runDir": "/abs/path/.ck/runs/20260905T210000Z-branding-step",
-  "pluginRoot": "/abs/path/to/ck",
-  "timestamp": "20260905T210000Z",
-  "question": "Should the first release include the branding guide step?",
-  "contextPath": "/abs/path/docs/PRD.md",
-  "rationalePath": "/abs/path/docs/brief.md",
-  "memoPath": "docs/decisions/20260905T210000Z-branding-step.md",
-  "lenses": [{ "persona": "river", "lens": "product", "model": "claude-opus-5", "reads": ["docs/PRD.md", "ROADMAP.md"] }]
-}
-```
-
-`runId`, `runDir`, `pluginRoot`, `timestamp`, and `question` are required; the script throws without them. Because a workflow is a slash command with no skill in front of it, the main session mints `runId` and `timestamp` with `date -u` and passes absolute paths; the workflow's `description` carries those instructions so a direct invocation still works.
-
-### 6.3 Lenses, models, and evidence
+**Lenses, models, and evidence.**
 
 | Lens | Persona | Default model | Reads by default | Why this model |
 |---|---|---|---|---|
-| product | `ck:river` | `claude-opus-5` | `docs/PRD.md`, `ROADMAP.md` | River's own tier; the anchor lens |
-| marketing | `ck:toni` | `claude-fable-5-1` | `docs/market-research.md`, `docs/gtm.md` | The strongest model on the lens most often under-argued in a product decision; also the most expensive lens (Appendix H) |
-| ux | `ck:kai` | `claude-sonnet-5` | `brand/`, `docs/mockups/` | Completes three distinct models at the lowest added cost |
+| product | `ck:river` | `claude-fable-5-1` | `docs/PRD.md`, `docs/opportunity.md`, `ROADMAP.md` | River's own tier; the anchor lens |
+| marketing | `ck:toni` | `claude-opus-5` | `docs/market-research.md`, `docs/opportunity.md` | Toni's own tier |
+| ux | `ck:kai` | `claude-sonnet-5` | `brand/`, `docs/design/` | Moved down from Opus 5 so that three lenses are three models, at the lowest added cost |
 
 Every lens also reads `contextPath` when given. Files in `reads` that do not exist are skipped and named in the result. Varying the evidence does more than varying the model (Opus PRD P7): three Claude tiers give scale diversity, not independent judgment, because they share one training pipeline. The memo header states this limitation (proposal §8.5).
 
 **Two passes.** Each lens forms and records its view from the material and its own evidence first. Only then, if `rationalePath` is given, does it read the author's rationale, check whether the claims it relied on are supported, and report whether its view changed. A reviewer who reads the rationale first ratifies instead of testing (Will's panel brief).
 
-Any lens can be replaced or re-modelled per run. If two lenses share a model the script logs that their agreement counts as one opinion. `panel.js` is the one script allowed to pass `model` on a persona agent (§4.5). [P]
+Any lens can be replaced or re-modelled per run. If two lenses share a model the script logs that their agreement counts as one opinion. `panel.js` is the one script allowed to pass `model` on a persona agent, and it only moves a lens down (§4.5). [P]
 
-### 6.4 Lens schema
+**Lens schema.** Every lens returns, and writes to `<runDir>/panel/<persona>.json`: `recommendation` (yes, no, yes-if, not-yet); `position`; `reasoning` (evidence from the material or the lens's own reading, not from the other lenses); `evidenceRead`; `strongestArgumentAgainstOwnRecommendation`; `killCondition`; `killConditionMet` (yes, no, unknown) with `killConditionEvidence`; `viewChangedByRationale` (yes, no, not-read); `questionsForOtherLenses` (`[{to, question}]`); `handoffBrief`. The schema is enforced at the tool-call layer, so a lens that omits a field is retried by the harness [D].
 
-Every lens returns, and writes to `<runDir>/panel/<persona>.json`:
-
-| Field | Meaning |
-|---|---|
-| `recommendation` | `yes`, `no`, `yes-if`, `not-yet` |
-| `position` | One paragraph |
-| `reasoning` | Evidence from the material or the lens's own reading, not from the other lenses |
-| `evidenceRead` | The files actually read, so the memo can say what each lens saw |
-| `strongestArgumentAgainstOwnRecommendation` | The best case a smart colleague would make against it; a weak one is a failed answer |
-| `killCondition` | The specific, observable condition under which the lens would say this should not be done at all |
-| `killConditionMet` | `yes`, `no`, or `unknown`: does the material already show that condition |
-| `killConditionEvidence` | Where in the material, or why unknown |
-| `viewChangedByRationale` | `yes`, `no`, or `not-read` |
-| `questionsForOtherLenses` | `[{to, question}]`, addressed to `author` or a lens persona |
-| `handoffBrief` | Decisions to record, open risks in the domain, one direct question to a named lens |
-
-The schema is enforced at the tool-call layer, so a lens that omits a field is retried by the harness [D].
-
-### 6.5 Stages
-
-`meta.phases` and `meta.personas` (for the phase-two map):
+**Stages** (`workflows/panel.js`, Appendix A, `meta.personas: ['river', 'toni', 'kai']`):
 
 | Phase | Agents | What happens |
 |---|---|---|
 | Lenses | 3, in parallel, `agentType: 'ck:<persona>'`, `model` per lens | Each reads the material and its own evidence, records its view, then reads the rationale if given; applies its behaviors in subagent form; writes `panel/<persona>.json`; returns the object |
 | Synthesis | 1, neutral (no `agentType`, session model) | Reads the three results, writes the memo at `memoPath`, returns the memo object |
 
-Four agents. One concurrency round on any machine with four or more CPUs. Full script: Appendix A.
+Four agents. One concurrency round on any machine with four or more CPUs.
 
-### 6.6 Decision memo
+**The document.** `docs/decisions/<timestamp>-<slug>.md`, contract §7.11. Sections, in order: 1 Question and context (run id, timestamp, the lens table with models and what each read, the decorrelation limitation, any lens that did not answer); 2 Recommendations (table); 3 Agreement, flagged as low-information, with whether that is because it is obviously true or a shared blind spot; 4 Disagreement, every point where two lenses conflict, both positions at full strength, and the decision the author must make, not adjudicated; 5 Kill conditions, verbatim, each with the lens's own answer to whether the material already shows it met; 6 Each lens against itself, verbatim; 7 Unique findings; 8 What nobody checked; 9 Questions between lenses, verbatim; 10 Handoff briefs, verbatim.
 
-Default path `docs/decisions/<timestamp>-<slug>.md`, committed; the artifact is the state (§4.3). Sections, in order:
+The synthesis agent is neutral and holds no lens. It never averages positions or picks a winner. It computes `agreementRate` and sets `panelFailedToDisagree` when every lens recommends the same thing and no self-argument is substantive; the header then says the panel should be re-run with a different question or lens set. Above roughly two-thirds agreement the panel is theater (Will's brief); the rate is in the memo so `/ck:report` can track it later.
 
-1. Question and context: run id, timestamp, the lens table with models and what each read, the decorrelation limitation, any lens that did not answer
-2. Recommendations: table, lens | persona | model | recommendation | one-line position
-3. Agreement, flagged as low-information: what all lenses concur on, and whether that is because it is obviously true or because they share a blind spot; the memo says which
-4. Disagreement: every point where two lenses conflict, both positions at full strength, and the decision the author must make. Not adjudicated
-5. Kill conditions, verbatim, with each lens's own answer to whether the material already shows it met
-6. Each lens against itself, verbatim
-7. Unique findings: anything only one lens saw
-8. What nobody checked
-9. Questions between lenses, verbatim
-10. Handoff briefs, verbatim, one per lens
+**Failure handling.** A lens stopped or dead on an API error returns `null` [D]; the script logs which lens is missing and synthesizes on the survivors; the memo header says so. Every lens failing throws; nothing is written. Synthesis returning `null` returns the raw lens results with `memoPath: null`; `panel/*.json` is on disk.
 
-The synthesis agent is neutral and holds no lens. It never averages positions or picks a winner. It computes `agreementRate` (the share of lenses on the most common recommendation) and sets `panelFailedToDisagree` when every lens recommends the same thing and no self-argument is substantive; the header then says the panel should be re-run with a different question or lens set. Above roughly two-thirds agreement the panel is theater (Will's brief); the rate is in the memo so `/ck:report` can track it later.
+**Cost.** About $0.80 per run, dominated by the Fable lens (Appendix I).
 
-### 6.7 Failure handling
-
-| Failure | Behavior |
-|---|---|
-| A lens is stopped by the user or dies on an API error | `agent()` returns `null` [D]; the script logs which lens is missing and synthesizes on the survivors; the memo header says so; the skill's message follows §4.8 |
-| Every lens fails | The script throws; nothing is written; the session sees the error and the skill translates it |
-| Synthesis returns `null` | The script returns the raw lens results with `memoPath: null`; `panel/*.json` is on disk |
-| Two lenses share a model | Logged; the run proceeds |
-| A file in `reads` does not exist | Skipped; listed in `evidenceRead` as absent |
-
-### 6.8 Cost
-
-About $0.75 per run at today's prices, dominated by the Fable lens. Assumptions and arithmetic: Appendix H.
-
-### 6.9 Acceptance criteria
-
+**Acceptance.**
 - [ ] `/ck:panel <question>` in a session with the plugin enabled shows the consent prompt with the option "don't ask again for `ck:panel`" [D]; after consent it runs in the background and `/workflows` shows phases Lenses and Synthesis.
 - [ ] `<runDir>/panel/river.json`, `toni.json`, `kai.json` exist and validate against the lens schema; the memo exists at `docs/decisions/` with the ten sections.
-- [ ] `/workflows` shows three different models on the three lens agents.
+- [ ] `/workflows` shows three different models on the three lens agents: Fable 5.1, Opus 5, Sonnet 5.
 - [ ] Each lens's `evidenceRead` lists different files when the default `reads` exist.
 - [ ] With `rationalePath` given, each lens reports `viewChangedByRationale` as `yes` or `no`, never `not-read`.
 - [ ] Stopping one lens in `/workflows` produces a memo whose header names the missing lens.
@@ -545,140 +890,94 @@ About $0.75 per run at today's prices, dominated by the Fable lens. Assumptions 
 - [ ] A deliberately one-sided question ("Should we keep the tests passing?") yields `panelFailedToDisagree: true` and an `agreementRate` of 1.
 - [ ] The script passes §9 test 9.
 
----
+### 6.12 `/ck:next`
 
-## 7. `/ck:brief`, `/ck:prd`, and `/ck:next`
-
-### 7.1 Purpose
-
-Proposal goal 3: a PRD that has the same shape every time, in every project, produced by River with the product, marketing, and UX lenses challenging it before the author sees it. The shape comes from the artifact contract (§7.8); the process comes from three commands. The split between `brief` and `prd` is the one place a cheap early document governs an expensive later run (Opus PRD §7.4).
-
-### 7.2 `/ck:brief`
-
-A workflow (`workflows/brief.js`, Appendix C). Input: one line of idea text. Output: `docs/brief.md`.
-
-```
-/ck:brief An app that reminds you to water each plant on its own schedule
-```
-
-| Phase | Agents | What happens |
-|---|---|---|
-| Draft | 1, `ck:river` | Reads the idea and Part A of the contract. Writes `docs/brief.md`: the idea; the problem with the root-cause chain (why, why, why) written out; the user; one success number with a date and a leading indicator; the scope with a smaller first version and River's recommendation; non-goals; open questions for the author. River's interactive behaviors run in subagent form (§5.4): the chain of whys is written, not asked; the smaller version is proposed, not negotiated |
-| Validate | 1 neutral, Haiku 4.5, `effort: 'low'`; then `ck:river` once if needed | Checks the brief against Part A's checklist; one revision at most |
-
-Three agents at most. About a minute. Cost in Appendix H. Acceptance: `docs/brief.md` exists with Part A's seven sections; the open-questions list is present even when empty; the skill's closing message names the file and gives one next action ("Read it, change anything, then run `/ck:prd`").
-
-### 7.3 `/ck:prd`: entry
-
-A skill (`skills/prd/SKILL.md`, Appendix D), `disable-model-invocation: true`, argument hint `[--interview] [idea]`.
-
-1. **Precondition.** If the Workflow tool is not available in the session, stop: "Dynamic workflows are not available here. `/ck:prd` needs them." No fallback to running the stages by hand.
-2. **Find the brief.** If `docs/brief.md` exists, go to step 4. If not and `--interview` was given, run the interview (step 3). Otherwise stop with one action: "Run `/ck:brief <your idea>` first. It takes about a minute and writes `docs/brief.md`. Then run `/ck:prd` again."
-3. **The interview (Will's path).** River asks, one question at a time, and appends each answer to `<runDir>/interview.md` before asking the next. Three Whys with early-stop options; the user; the success number and leading indicator; non-goals; the V0 Challenge with its three options; the lens choice ("default panel, or name lenses"); the output path (default `docs/PRD.md`). Then River writes `docs/brief.md` from the answers. The interview's three behavior headings match `upstream/profiles/river.md` (CI-checked, §9). An interview with answers but no brief is offered for resume on the next run.
-4. **Resume check.** If `docs/PRD.md` exists and the latest `run.json` says the run stopped at a stage, offer to continue from that stage. If it says `final`, ask whether to revise (re-run the panel on named sections) or start over.
-5. **Mint the run** (§4.3): timestamp, run id, absolute cache directory, `.git/info/exclude`, `run.json` with `status: "starting"`.
-
-### 7.4 Launch and wait
-
-The skill calls, exactly:
-
-```
-Workflow({
-  scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/prd-draft.js",
-  args: {
-    runId, runDir, pluginRoot: "${CLAUDE_PLUGIN_ROOT}", timestamp,
-    briefPath: "<abs>/docs/brief.md", prdPath: "<abs>/docs/PRD.md",
-    startAt: "<draft | validate | panel | synthesize>",
-    lenses: <list or null>
-  }
-})
-```
-
-It writes the returned run id into `run.json` as `harnessRunId` with `scriptPath`, sets `status: "drafting"`, tells the user in plain words that the draft is running in the background, and **stops: it waits for the task notification. It does not poll, does not narrate, and does not start other work on this run.** On a stop or failure it prints the §4.8 message naming `docs/PRD.md` and the one action, and records the failed stage in `run.json` so the next run passes the right `startAt`. Within the same session it may instead offer `Workflow({ scriptPath, resumeFromRunId: harnessRunId })`, which replays completed agents from cache [D].
-
-`${CLAUDE_PLUGIN_ROOT}` expands anywhere in skill content [D]. Whether `name: "ck:prd-draft"` also works for the Workflow tool is unverified (§10.2); `scriptPath` is the specified path.
-
-### 7.5 The `prd-draft` workflow
-
-`meta.personas: ['river', 'toni', 'kai']`. Full script: Appendix B. Stages run in order and each is skipped when `args.startAt` names a later one.
-
-| Phase | Agents | What happens | Writes |
-|---|---|---|---|
-| Draft | 1, `ck:river` | Reads `docs/brief.md` and Part B of the contract. Writes `docs/PRD.md` to the contract's section order. Tags every claim not taken from the brief `[C1]`, `[C2]`, ... so the lenses can address it. Root-cause chain and V0 counter-proposal in subagent form. No premortem yet | `docs/PRD.md` |
-| Validate | 1 neutral, Haiku 4.5, `effort: 'low'`; then `ck:river` to revise, at most twice | Checks the draft against Part B's checklist; returns `{valid, missing[], notes}`. On `missing`, River revises in place, keeping every `[C<n>]` tag. After two revisions the workflow proceeds and logs what is still missing | `docs/PRD.md` |
-| Panel | 4, nested `workflow({scriptPath: pluginRoot + '/workflows/panel.js'})` | Question: "Is this PRD ready for the author's review, and what would you change before it ships?" Material: `docs/PRD.md`. Rationale, read second: `docs/brief.md`. Evidence per lens: River the brief and `ROADMAP.md`; Toni any positioning material; Kai any screens or mockups | `panel/*.json`, `docs/decisions/<timestamp>-prd-review.md` |
-| Synthesize | 1, `ck:river` | Rewrites `docs/PRD.md`: revised where the panel showed a claim wrong or unsupported; **Appendix A, Challenged claims** (claim, challenged by, severity, status ∈ upheld, revised, withdrawn, open; resolution; the memo's disagreements reproduced verbatim; nothing deleted); **Appendix B, Premortem** (the scenario, the exposed assumption, the question "What went wrong?" left verbatim for the review) | `docs/PRD.md` |
-
-Seven agents without a revision, up to nine with two. Under the default "medium" size guideline; about four sequential steps on a 4-CPU laptop, since the stages depend on each other. If the nested panel throws, the workflow logs it and synthesizes without it, saying so in the PRD header.
-
-### 7.6 Gate 1: the review
-
-Two paths, chosen by whether the Artifact tool is available in the session (Phase 0 spike, §8.0).
-
-**Review page (Will's feedback channel, §4.9).** The skill publishes `docs/PRD.md` as a private review page, with the premortem question at the top and one line of instructions: "Comment on anything. Say 'done' here when you are finished." It waits. When the user says done, it reads every comment thread, applies each one to `docs/PRD.md` (or replies with a reason when it will not), republishes the same page, and resolves each thread with one line saying what changed. Then it finalizes.
-
-**File edit (always available).** "Open `docs/PRD.md`, change anything you like, save, and run `/ck:prd` again. I'll fold your edits in." On the next run the skill sees `status: "review"` in `run.json` and finalizes from the edited file.
-
-Either path may also trigger a targeted re-run: `Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/panel.js", args: { ..., question: "<the focused question>", contextPath: "<abs>/docs/PRD.md", rationalePath: "<abs>/docs/brief.md" } })`, then back to this gate.
-
-### 7.7 Finalize
-
-One agent, so no workflow (§4.2):
-
-```
-Agent({
-  subagent_type: "ck:river",
-  description: "Finalize PRD",
-  prompt: "Read docs/PRD.md and <runDir>/gate-1.md (the review comments and how each was applied, or the note that the file was edited directly). Fold the premortem answer into Assumptions and Risks, resolve each open decision as answered, keep Appendix A intact, and check the result against Part B of the contract. Write docs/PRD.md. Set status 'final' in <runDir>/run.json. Return the path and a five-line summary."
-})
-```
-
-The skill prints the path and one next action: "Run `/ck:next`." It suggests `/devlog` for the decision memo when that skill is installed.
-
-### 7.8 The artifact contract
-
-`skills/prd-artifact/SKILL.md` (full text: Appendix F). Not user-invocable. Two parts in one file, so the validator has one thing to read.
-
-**Part A, the brief.** Sections: Idea; Problem and root-cause chain; User; Success metric and leading indicator; Scope (decision and the smaller first version); Non-goals; Open questions for the author. Checklist A1 to A6.
-
-**Part B, the PRD.** Sections: Summary; Problem; User; Success metric and leading indicator; Scope; Non-goals; Requirements (numbered, each with acceptance criteria); Sequencing and dependencies; Assumptions; Risks; Open questions; Appendix A Challenged claims; Appendix B Premortem. Checklist B1 to B10, each a statement the validator can check by reading.
-
-Claude also loads this skill on its own when asked to write a brief or a PRD outside the workflow (its description says so), which is the proposal's consistency mechanism (§3.4) reaching the plain session too.
-
-### 7.9 `/ck:next`
-
-A skill (`skills/next/SKILL.md`, Appendix E). It looks at which of `docs/brief.md`, `docs/PRD.md`, and `docs/decisions/` exist and says one thing in plain words:
+A skill (`skills/next/SKILL.md`, Appendix F). It looks at which documents in §6.1 exist and at the latest `run.json`, and says one thing in plain words:
 
 | State | It says |
 |---|---|
-| No `docs/brief.md` | "Start with `/ck:brief` and describe your idea in a sentence. It takes about a minute and writes `docs/brief.md`." |
-| Brief, no PRD | "Run `/ck:prd`. It turns the brief into full requirements and takes a few minutes." |
-| PRD not final (`run.json` says review or a stopped stage) | "Your PRD is waiting for your review. Open `docs/PRD.md` (or the review page), then run `/ck:prd` again." or the resume message from §4.8 |
-| PRD final | "The PRD is done. When you have a decision to make, run `/ck:panel <your question>`. The next stages (`brand-guide`, `roadmap`) are not installed yet." |
+| Nothing in `docs/` | "Start with `/ck:opportunity` and describe your idea in a sentence. It writes `docs/opportunity.md`: what the product is, who it is for, what the market looks like, and whether it is worth doing." |
+| Opportunity, nothing else | "Run `/ck:market-research` to go deeper on the market, or `/ck:brief` if the opportunity is enough to start from." |
+| Brief, no team | "Run `/ck:team`. It decides who is on this product and who owns what, and writes `docs/TEAM.md`." |
+| Brief and team, no PRD | "Run `/ck:prd`. It turns the brief into full requirements and takes a few minutes." |
+| A document waiting for review (`run.json` says `review`) | "Your [document] is waiting for your review. Open the review page or `docs/<file>`, then say done or run the command again." |
+| A stopped stage | "Your [document] stopped partway. Everything so far is in `docs/<file>`. Run the command again to continue." |
+| PRD, no roadmap | "Run `/ck:roadmap`. It orders the work and writes `ROADMAP.md`." |
+| Roadmap, no architecture | "Run `/ck:architecture`. It recommends how to build it and writes `docs/ARCHITECTURE.md`." |
+| Architecture, no brand guide | "Run `/ck:brand-guide`. It takes two rounds of your review and writes the brand guide and assets." |
+| Everything above | "The definition is complete. Run `/ck:design <feature>` for any feature in the PRD, or `/ck:panel <question>` for a decision. Building features is the next release of ck." |
 
-No model names, no token counts, no more than one action. It runs in the main session with no agents.
+No token counts, no more than one action. It runs in the main session with no agents.
 
-### 7.10 Cost
+---
 
-About $0.20 for `/ck:brief`; about $1.50 for `/ck:prd` without a revision, about $2.00 with one, plus the main session's own turns. Appendix H.
+## 7. Document contracts
 
-### 7.11 Acceptance criteria
+One skill per document type, `skills/<document>-artifact/SKILL.md`, not user-invocable. Each carries: the section order with headings verbatim; what each section must contain; a numbered checklist the validator can check by reading; the file path; and the writing rule (plain technical English, one instruction per sentence, no em-dashes in prose). Claude also loads a contract on its own when asked to write that document type outside a workflow (the description says so), which is the proposal's consistency mechanism (§3.4) reaching the plain session too. This is the layer that answers Clare's failure mode (§2.2): the same document has the same shape whoever writes it and however it was started.
 
-- [ ] `/ck:brief <idea>` writes `docs/brief.md` with Part A's sections and passes the validator; the closing message names the file and one action.
-- [ ] `/ck:prd` without a brief stops with the one-action message and runs nothing.
-- [ ] `/ck:prd --interview` asks one question at a time; after the second why, `<runDir>/interview.md` already holds the first two answers; killing the session and re-running offers to resume.
-- [ ] `run.json` contains `harnessRunId` before the skill goes idle.
-- [ ] `.git/info/exclude` contains `.ck/`; `git status` shows `docs/` files and nothing under `.ck/`.
-- [ ] `/workflows` shows phases Draft, Validate, Panel (with the nested panel's agents), Synthesize; the validator runs on Haiku 4.5.
-- [ ] `docs/PRD.md` has every Part B section, an Appendix A with at least one row per finding a lens raised, and an Appendix B with a scenario and the verbatim question.
-- [ ] Stopping the workflow during Panel, then running `/ck:prd` again, continues from Panel without re-drafting (`startAt`).
-- [ ] With the Artifact tool available: a review page is published; two comments are applied and resolved with one-line replies; the page is republished.
-- [ ] Without it: the file-edit message is printed; an edit to `docs/PRD.md` followed by `/ck:prd` finalizes from the edited file.
-- [ ] The final PRD is at `docs/PRD.md` with `status: final` in `run.json`, and its checklist passes when re-validated by hand.
-- [ ] `/ck:next` gives the right one-line answer in each of the four states, with no model names.
-- [ ] J1 (§2.3) completes on a fresh project without a text editor or `.ck/`, on the file-edit path.
-- [ ] The consent prompts seen during the drill are recorded, including whether the nested panel prompted separately (§10.2).
-- [ ] `skills/prd/SKILL.md` contains the three behavior headings from `upstream/profiles/river.md` (CI-checked).
+The two contracts that phase one's first drills exercise most, the brief and the PRD, are written in full in Appendix G. The others are specified here to the section and checklist level.
+
+### 7.1 Opportunity analysis (`docs/opportunity.md`)
+
+Modelled on the NIGHTGRID opportunity analysis. Sections: Executive summary (verdict in one paragraph: worth doing, worth doing smaller, or not now, with the one number that decides it); Concept statement (what it is, for whom, in two sentences); Problem and root-cause chain; Market context (size, trends, comparable products, each claim sourced); one section per contributing lens, in the order the frame chose them, each headed `## <Lens>: <title>` (for example `## Game design: core loops`, `## Marketing: positioning and go-to-market`, `## Architecture: technical shape`); Stage gates (what must be true to proceed at each stage, and the kill condition at each); Monetization and business model; Risks (each with a mitigation or an explicit acceptance); Open questions; Sources.
+
+Checklist: every section present in order; the verdict names a number; every market claim has a source in Sources; every contributing lens has a section and every section was written by the lens the frame chose (checked from `sections/`); at least three stage gates each with a kill condition; risks carry mitigations; open questions present even when empty.
+
+### 7.2 Market research (`docs/market-research.md`)
+
+Sections: Summary (five findings that change a decision); Market size and trends; Competitors and substitutes (table: name, what it does, who it serves, price or model, strength, gap); Customers, segments, and channels; Pricing and business models; Constraints (platform, legal, regulatory); Contradictions and unknowns (claims the researchers disagreed on, with both sources; what could not be found); Implications for positioning; Sources (numbered; URL, title, date accessed).
+
+Checklist: every body claim carries a source number that exists in Sources; the competitors table has at least three rows; Contradictions and unknowns is present even when empty; no source is older than 18 months unless marked as historical; Summary has exactly five findings.
+
+### 7.3 Brief (`docs/brief.md`)
+
+Sections: Idea; Problem and root-cause chain; User; Success metric and leading indicator; Comparable products (three to five, each with what it does, price or model, and the gap, one source each, attributed to the market pass; cites `docs/market-research.md` when it exists); Scope (the smaller first version, what it leaves out, whether it would still move the number, River's recommendation, the decision marked open unless made); Non-goals; Open questions for the author. Checklist A1 to A7 in Appendix G.
+
+### 7.4 PRD (`docs/PRD.md`)
+
+Sections: Summary; Problem; User; Success metric and leading indicator; Scope; Non-goals; Requirements (numbered, each with acceptance criteria); Sequencing and dependencies; Assumptions; Risks; Open questions; Appendix A Challenged claims; Appendix B Premortem. Claim tags `[C<n>]`. Checklist B1 to B10 in Appendix G.
+
+### 7.5 Team, roles and responsibilities (`docs/TEAM.md`)
+
+Sections: Cast (table: persona, role, tier, why on this product); Roles and responsibilities (matrix: one row per pipeline document and stage, and per PRD requirement area when a PRD exists; columns owner, contributors, reviewers); Hand-off order (who hands to whom, and what the hand-off carries, in the pipeline's order); Needs (per persona: what it needs from whom before it can start); Missing seats (needs no persona covers, what a person in that seat would own, and the recommendation: recruit, cover from an existing seat, or accept the gap); Declined nominations (persona, responsibility, reason, replacement).
+
+Checklist: every pipeline document in §6.1 has exactly one owner; every persona in Cast appears in the matrix at least once; every persona in the matrix is in Cast; Missing seats is present even when empty; every declined nomination has a replacement or an explicit gap.
+
+### 7.6 Roadmap (`ROADMAP.md`)
+
+The roadmap skill's structure verbatim [R]: Section 1, Current Roadmap (Current State Snapshot; Opportunities, prioritized in Tier 1 Ship Next, Tier 2 High Value, Tier 3 Strategic, each tier its own table with the skill's columns; Recommended Sequencing; Open Questions; OKR table); Section 2, Revision History, with the skill's entry format (What Changed; Why; Open Questions Resolved / Added; Change Types; Triggered By).
+
+Checklist: the roadmap skill's lint check passes; every Tier 1 row names a success signal and traces to a PRD requirement; the newest revision-history entry is dated with the run's timestamp; the OKR table has at least one key result with a target.
+
+### 7.7 Architecture (`docs/ARCHITECTURE.md`)
+
+Sections: Context and constraints (from the PRD and roadmap: what is fixed); Quality attributes (ranked; the top three named with the reason); Recommended architecture (one paragraph and a Mermaid diagram); Components (table: component, responsibility, owner persona from `docs/TEAM.md` when it exists); Data model sketch; Integration points and external dependencies; Alternatives considered (table: alternative, what it would gain, why not); Decision record (date, decision, deciders, consequences); Sequencing against the roadmap (which components each Tier 1 item needs); Risks; Open questions; Appendix A Challenged claims; Appendix B Premortem. Claim tags `[C<n>]` for every claim not from the PRD.
+
+Checklist: every section present in order; the diagram renders; the alternatives table has at least two rows; every Tier 1 roadmap item appears in Sequencing; every component has a responsibility; the decision record has a date; every tag appears in Appendix A or is marked unchallenged.
+
+### 7.8 Brand direction record and brand guide
+
+**Brand direction record** (`docs/decisions/<timestamp>-brand-direction.md`), modelled on the NIGHTGRID record: Decision (the chosen direction by label and name; the rejected finalists with the reason each); Locked layout system (grid, spacing, radii, elevation); House tokens (background, ink, accents, functional colors, each with its value and its role); Theme lineup (variants of the skin, if any, and when each is used); Rationale (why this direction serves the positioning line); Open items; Asset list (every file under `brand/final/` with its purpose).
+
+**Brand guide** (`docs/brand-guide.md`), modelled on the d20Mob brand identity guide: Brand overview and personality (the positioning line; personality in three to five words with what each rules out); Brand architecture (product, publisher, sub-brands, how they relate); Logo system (primary mark, secondary mark, lockups, color variants, clear space, minimum size, misuse); Color system (the tokens, with contrast ratios for text pairs; functional colors; product-specific color classes when the product has them, such as class or faction colors); Typography (families, scale, weights, usage per role); UI surface system (cards, panels, buttons, states, in the skin); Art direction (illustration style, imagery rules, iconography) and asset list; Product-specific sections when applicable (map overlay, in-game HUD, print); App icon; Publisher credit and legal (credit line, trademark and copyright notices).
+
+Checklist (guide): every section present in order; every color token in Color system exists in `brand/final/tokens.json` with the same value; every text-on-background pair states its contrast ratio and meets 4.5:1 or is marked decorative; every asset named exists under `brand/final/`; the logo section shows at least one misuse example; the personality words match the direction record.
+
+### 7.9 Gallery (`brand/*/gallery.html`, `docs/design/<feature>/gallery.html`)
+
+One page shape for brand galleries and design galleries, so the review is the same every time. The page: a banner with the product name, what is being reviewed, the round, and the five comment steps from §4.9; a variant strip with labels (A, B, C, ...) that scrolls to each variant; per variant, in order: the label and name; the rendering (marks and palette swatches for brand; device frames with the screens and their states for design); the rationale (why this, in three sentences); the trade-off (what it gives up); what it satisfies (the requirement or the positioning line); for design, the states row (empty, loading, error). All assets inline (SVG, data URIs); the page is self-contained and under 16 MB; Code Katz house tokens for the chrome, the variant's own tokens inside its frame; light and dark.
+
+Checklist: labels are consecutive letters from A; every variant has all five parts (rendering, rationale, trade-off, satisfies, states where applicable); no external asset references; file size under 16 MB; the banner carries the five steps.
+
+### 7.10 Design spec (`docs/design/<feature>/spec.md`)
+
+Sections: Feature (name, PRD requirement numbers, the user, the success metric it serves); Chosen variant (label, one paragraph on why, from the review); Screens (one subsection per screen: purpose, layout, components, copy); Components (table: component, brand token or surface it uses, states); Interactions (trigger, response, transition); States (empty, loading, error, success, per screen); Copy (every string, with its screen); Accessibility (focus order, contrast, labels, motion); Requirement traceability (table: acceptance criterion, screen, how it is satisfied); Acceptance (Robin's checks: one per screen, each a statement a tester could verify).
+
+Checklist: every section present in order; every acceptance criterion of the requirement appears in the traceability table; every screen in Screens has a row in States and at least one check in Acceptance; every component names a token or surface from the brand guide, or "neutral" when there is no guide; no em-dashes in prose.
+
+### 7.11 Decision memo (`docs/decisions/<timestamp>-<slug>.md`)
+
+The ten sections in §6.11, in order. Checklist: the header names every lens, its model, what it read, and any lens that did not answer; every kill condition is quoted verbatim with its met/not-met/unknown answer; the Disagreement section takes no side; `agreementRate` and `panelFailedToDisagree` are stated.
 
 ---
 
@@ -686,63 +985,79 @@ About $0.20 for `/ck:brief`; about $1.50 for `/ck:prd` without a revision, about
 
 ### 8.0 Phase 0: spikes before the build
 
-Adopted from the Opus PRD §9. Each is a one-session experiment with a yes-or-no answer recorded in `tests/drill/`.
+Each is a one-session experiment with a yes-or-no answer recorded in `tests/drill/`.
 
 | # | Spike | Why it gates the build | Answer today |
 |---|---|---|---|
-| S1 | Install from the marketplace on a second machine; `/ck:next` runs | Distribution is the whole point | Open |
+| S1 | Install from the marketplace on a second machine (Clare's); `/ck:next` runs | Distribution is the whole point | Open |
 | S2 | Inside a workflow, `agentType: 'ck:river'` runs on the model in its frontmatter, and `model:` on the call overrides it | The tier table and the panel's decorrelation both depend on it | Open; the docs say yes [D] |
-| S3 | A nested `workflow({scriptPath})` consent: separate prompt or covered by "don't ask again" | Friction on every `/ck:prd` run | Open |
-| S4 | The `SubagentStart` hook's stdin carries `agent_type` and `session_id`, and `CLAUDE_PLUGIN_DATA` is writable | The usage log, so G6 | Open; the docs say yes [D] |
-| S5 | The Artifact tool (review pages) is available in Will's local Claude Code, and its comments can be read from a skill | Chooses the Gate 1 path | Open |
+| S3 | A nested `workflow({scriptPath})` consent: separate prompt or covered by "don't ask again" | Friction on every `/ck:prd` and `/ck:architecture` run | Open |
+| S4 | The `SubagentStart` hook's stdin carries `agent_type` and `session_id`, and `CLAUDE_PLUGIN_DATA` is writable | The usage log, so G7 | Open; the docs say yes [D] |
+| S5 | The publishing tool for review pages is available in local Claude Code (desktop app and CLI), and a skill can read the page's comments there | Every gate in §4.2 | Open |
 | S6 | Can `PreModelSwitch` interrupt a workflow to arbitrate a model change | The Opus PRD's escalation design | **Answered: no.** Workflows accept no mid-run input and the hook fires on a requested session switch only [D] |
+| S7 | Web search is available to a subagent running inside a workflow, with `agentType` set and without | `market-research`, the brief's market pass, and the opportunity's sourced sections | Open |
+| S8 | On Clare's machine, how many agents run concurrently (min(16, CPUs minus 2) [D]); does an eleven-agent `team` run finish in one sitting | Sizing of every fan-out | Open |
 
 ### 8.1 Repository and layout
 
-New repository `code-katz/ck`, one plugin per repo like the seven marketplace entries today [R]. Rejected: inside `claude-team-cli` (reopens the 07-31 decision inside the same repo and mixes the shell install path with the plugin) and inside `claude-plugins` as a subdirectory plugin (supported by the marketplace-root source form [D], but it breaks the family's per-repo README, DEVLOG, ROADMAP, and test convention). [P]
+New repository `code-katz/ck`, one plugin per repo like the seven marketplace entries today [R]. Its first commit imports `profiles/` and `tiers.conf` (§5.1); from the second commit on, the repository has no relationship to any other.
 
 ```
 ck/
 ├── .claude-plugin/plugin.json
 ├── README.md  DEVLOG.md  ROADMAP.md  LICENSE
-├── upstream/                     vendored from claude-team-cli at the pinned commit
-│   ├── profiles/*.md
-│   └── tiers.conf
-├── agents/*.md                   21 generated files (§5)
+├── profiles/                     the source of truth for personas (§5.1)
+│   ├── <21 personas>.md
+│   └── ROSTER.md                 generated
+├── tiers.conf                    persona → model (§5.3)
+├── agents/<21>.md                generated subagents (§5.2)
 ├── skills/
-│   ├── prd/SKILL.md              /ck:prd (Appendix D)
-│   ├── next/SKILL.md             /ck:next (Appendix E)
-│   └── prd-artifact/SKILL.md     the contract, Parts A and B (Appendix F)
+│   ├── <21 personas>/SKILL.md    generated switch commands (§5.6)
+│   ├── opportunity/SKILL.md      /ck:opportunity (gate owner)
+│   ├── prd/SKILL.md              /ck:prd (Appendix E)
+│   ├── architecture/SKILL.md     /ck:architecture
+│   ├── brand-guide/SKILL.md      /ck:brand-guide (two gates)
+│   ├── design/SKILL.md           /ck:design (one gate)
+│   ├── next/SKILL.md             /ck:next (Appendix F)
+│   ├── review-page/SKILL.md      how every gate publishes, waits, applies, republishes, resolves (§4.9)
+│   └── <10 contracts>-artifact/SKILL.md   (§7; brief and PRD in Appendix G)
 ├── workflows/
-│   ├── panel.js                  /ck:panel (Appendix A)
-│   ├── prd-draft.js              /ck:prd-draft (Appendix B)
-│   └── brief.js                  /ck:brief (Appendix C)
+│   ├── panel.js                  Appendix A
+│   ├── draft.js                  Appendix B (PRD and architecture)
+│   ├── brief.js                  Appendix C
+│   ├── team.js                   Appendix D
+│   ├── opportunity-draft.js      §6.2
+│   ├── market-research.js        §6.3
+│   ├── roadmap.js                §6.7
+│   ├── brand.js                  §6.9
+│   └── design-round.js           §6.10
 ├── hooks/hooks.json              §5.5
 ├── scripts/
-│   ├── generate-agents.sh
-│   ├── bump-upstream.sh
+│   ├── generate.sh               profiles → agents, switch skills, ROSTER.md
 │   ├── usage-log.sh
-│   └── upstream.lock
+│   └── check-prereqs.sh
 └── tests/
     ├── run.sh
     ├── drill/                    Phase 0 answers and drill logs, dated
-    └── fixtures/                 a tiny project with a one-line idea and a one-page context doc
+    └── fixtures/                 two tiny projects: a game idea and a data-product idea, each with a one-line idea, a seeded brief, and a three-requirement PRD
 ```
 
-A project that uses the plugin gains: `docs/brief.md`, `docs/PRD.md`, `docs/decisions/*.md` (committed), and `.ck/runs/` (a cache, locally excluded).
+`skills/review-page/SKILL.md` is the one place the gate mechanics are written: publish with the banner and the five steps, wait for "done", read every thread, apply, republish the same URL, resolve with one line, report unresolvable threads in chat, and the file-edit fallback. Every gate-owning skill says "review per `${CLAUDE_PLUGIN_ROOT}/skills/review-page/SKILL.md`" rather than restating it, so a change to how reviews work is one edit.
+
+A project that uses the plugin gains the documents in §4.3 (committed) and `.ck/runs/` (a cache, locally excluded).
 
 ### 8.2 Manifest
 
 ```json
 {
   "name": "ck",
-  "description": "Persona workflows for Claude Code: /ck:brief and /ck:prd (a River-led brief and PRD, challenged by a three-lens panel), /ck:panel (product, marketing, and UX lenses on different models), /ck:next, and 21 Code Katz personas as ck:<name> subagents.",
+  "description": "Code Katz personas and workflows for Claude Code: the product-definition pipeline (/ck:opportunity, market-research, brief, prd, team, roadmap, architecture, brand-guide, design), /ck:panel (three lenses on three models), /ck:next, and 21 personas as ck:<name> subagents and /ck:<name> switch commands.",
   "version": "0.1.0",
   "author": { "name": "Code Katz" }
 }
 ```
 
-`version` pins the plugin: users receive a new copy only when the string changes [D]. Every release, including a regenerated `agents/` after `bump-upstream.sh`, bumps it. This is written next to `bump-upstream.sh` because it is not testable.
+`version` pins the plugin: users receive a new copy only when the string changes [D]. Every release bumps it.
 
 ### 8.3 Marketplace entry
 
@@ -752,9 +1067,9 @@ Appended to `claude-plugins/.claude-plugin/marketplace.json` (bumping its `metad
 {
   "name": "ck",
   "source": { "source": "github", "repo": "code-katz/ck" },
-  "description": "Persona workflows: /ck:brief and /ck:prd (River-led, challenged by a three-lens panel), /ck:panel (product, marketing, UX lenses on different models), /ck:next, and 21 personas as ck:<name> subagents. Phase one of the code-katz plugin.",
+  "description": "Code Katz personas and workflows: the product-definition pipeline from idea to designed feature, /ck:panel (three lenses on three models), /ck:next, and 21 personas as subagents and switch commands. Phase one of the code-katz plugin.",
   "category": "workflow",
-  "keywords": ["workflows", "personas", "prd", "brief", "panel", "subagents"]
+  "keywords": ["workflows", "personas", "prd", "brief", "panel", "brand", "design", "subagents"]
 }
 ```
 
@@ -764,30 +1079,19 @@ Install: `/plugin marketplace add code-katz/claude-plugins` then `/plugin instal
 
 | Prerequisite | Why | Grade |
 |---|---|---|
+| The old team tool is uninstalled | Its persona commands, subagents, `CLAUDE.md` block, and `SessionStart` hook collide with `ck`'s. The README carries the steps: remove `~/.local/bin/claude-team`, `~/.claude/team/`, the `~/.claude/commands/<persona>.md` and `~/.claude/agents/<persona>.md` files it installed, its marked block in `~/.claude/CLAUDE.md`, and its `SessionStart` entry in `~/.claude/settings.json`. `scripts/check-prereqs.sh` warns while any remain (§5.5) | [W, 2026-09-08] |
 | A paid Claude Code plan with dynamic workflows available; on Pro, enabled in `/config` | Workflows are the orchestrator | [D] |
 | Workflows not disabled by the organization (`disableWorkflows`) | Same | [D] |
-| team-cli PR re-basing `tiers.conf` to §5.3 | `ck` copies the tier verbatim; without the PR, River runs on Fable 5 and the panel's Opus lens is an override, not a tier | [R] |
-| The Artifact tool, for the review-page path of Gate 1 | Optional; the file-edit path always works | Spike S5 |
+| Web search available to subagents | `market-research`, the brief's market pass, the opportunity's sourced sections | Spike S7 |
+| The publishing tool for review pages | Every gate; the file-edit path always works | Spike S5 |
 | Node 20+ on the developer's machine, for the script check in the tests only | The plugin itself needs no Node at run time | [P] |
 | `jq` optional, for the usage log; the script falls back to appending the raw line | Family convention: jq is optional | [R] |
 
 ### 8.5 Version and update policy
 
 - `0.1.0` is the phase-one release. `0.x` until the 90-day review.
-- A change to any file under `agents/`, `skills/`, `workflows/`, or `hooks/` bumps the patch or minor version in the same commit.
-- `bump-upstream.sh` refuses to run if the working tree is dirty and prints the `agents/` diff so the reviewer sees what changed in persona text.
-
-### 8.6 Coexistence with `claude-team-cli`
-
-| Route | How | Lives in |
-|---|---|---|
-| Switch this session to a persona | `/river`, `/akira`, ... | team-cli (`install.sh`) |
-| Delegate one task to a persona on its tier | `ck:river` subagent, or team-cli's `river` subagent | both; `ck:` is the plugin form |
-| Open a separate session as a persona | `claude-team launch river` | team-cli |
-| Run a repeatable pipeline | `/ck:brief`, `/ck:prd`, `/ck:panel`, `/ck:next` | ck |
-| Plan parallel sessions, track them | `/parallel`, `/conductor` | team-cli, conductor |
-
-A user with both installed has two River subagents (`river` from `~/.claude/agents/`, priority 4, and `ck:river`, priority 5) [D]. They are generated from the same profile text at possibly different commits; `upstream.lock` says which. The README says this once.
+- A change to any file under `profiles/`, `agents/`, `skills/`, `workflows/`, `tiers.conf`, or `hooks/` bumps the patch or minor version in the same commit.
+- `scripts/generate.sh` refuses to run if the working tree is dirty outside the generated paths, and prints the diff of the generated files so the reviewer sees what changed in persona text.
 
 ---
 
@@ -798,56 +1102,76 @@ A user with both installed has two River subagents (`river` from `~/.claude/agen
 | # | Test | Type |
 |---|---|---|
 | 1 | `plugin.json` parses; `name` is `ck`; `version` matches a semver | static |
-| 2 | Regenerate `agents/` from `upstream/` into scratch; `diff -q` each file against the committed copy; fail listing stale names | drift |
-| 3 | Agent count equals profile count minus `coordinator*` | drift |
-| 4 | Per agent: `model:` equals the `tiers.conf` line; `name:` equals the filename, no colon; `## Handoff Brief` present; `## Greeting` absent; the §5.4 preamble sentence present; no `effort:` line | drift |
-| 5 | `scripts/upstream.lock` has exactly one `commit=` with a 40-hex value | drift |
-| 6 | Opt-in (dispatch or schedule, never on push): `git fetch --depth 1 origin <sha>` and `diff -r` the vendored files against it | drift, network |
-| 7 | `skills/prd/SKILL.md` contains the three `### N. <name>` headings from `upstream/profiles/river.md` | contract |
-| 8 | `skills/prd-artifact/SKILL.md` Part A and Part B section lists equal the lists in the `brief.js` and `prd-draft.js` Draft prompts | contract |
-| 9 | Every `workflows/*.js`: `node --check` passes on a copy with `export` stripped and the body wrapped in `(async () => { ... })()`, because workflow scripts use top-level `return` and `await`, which a bare module rejects; first statement is `export const meta`; `meta` has `name`, `description`, `phases`, `personas`; grep for `Date.now|Math.random|new Date\(\)|require\(|import\(` is empty | lint |
-| 10 | `hooks/hooks.json` parses; the matcher is `^ck:`; `usage-log.sh` given a fixture stdin appends one valid JSON line and exits 0, and exits 0 on garbage input | hook |
-| 11 | `skills/next/SKILL.md` and `skills/prd/SKILL.md` contain no model names and no token counts in user-facing text (grep for `claude-`, `opus`, `sonnet`, `fable`, `haiku`, `token` outside code fences) | user 2 |
-| 12 | Phase 0 answers recorded under `tests/drill/` for S1 to S6 before the release is tagged | phase 0 |
-| 13 | End-to-end drill, by hand, on the fixture project and then on one real project: `/ck:next`, `/ck:brief`, `/ck:prd` on the file-edit path, `/ck:panel`; a second pass on the review-page path where S5 says yes; a stop during Panel followed by a resume. Record the consent prompts, the files under `docs/` and `.ck/runs/<id>/`, the models shown in `/workflows`, and every message the skills printed. The drill log is committed under `tests/drill/<date>.md` | e2e |
-| 14 | The J1 drill: someone who is not Will runs the file-edit path on a fresh project from the README alone; every message they see is checked against §4.8's three rules | user 2 |
+| 2 | Regenerate `agents/`, the 21 switch skills, and `ROSTER.md` from `profiles/` into scratch; `diff -q` each against the committed copy; fail listing stale names | drift |
+| 3 | Agent count, switch-skill count, and `ROSTER.md` row count each equal the profile count | drift |
+| 4 | Per agent: `model:` equals the `tiers.conf` line; `name:` equals the filename, no colon; `## Handoff Brief` present; `## Greeting` absent; the §5.4 preamble sentence present; no `effort:` line. Per switch skill: `## Required Interactive Behaviors` and `## Greeting` present verbatim; the prepended sentence present | drift |
+| 5 | `tiers.conf` has exactly 21 lines, each `<name> <model>`, every name has a profile, every model is one of the three tier IDs; six Fable, eleven Opus, four Sonnet | tiers |
+| 6 | `skills/prd/SKILL.md` and `skills/river/SKILL.md` contain the three `### N. <name>` headings from `profiles/river.md` | contract |
+| 7 | For every contract skill, the section list in the contract equals the section list in the Draft prompt of the workflow that writes it (parsed from the `sections` constant each script declares) | contract |
+| 8 | Every gate-owning skill references `skills/review-page/SKILL.md` and none restates the five steps | contract |
+| 9 | Every `workflows/*.js`: `node --check` passes on a copy with `export` stripped and the body wrapped in `(async () => { ... })()`, because workflow scripts use top-level `return` and `await`, which a bare module rejects; first statement is `export const meta`; `meta` has `name`, `description`, `phases`, `personas`; every name in `personas` has a profile; grep for `Date.now|Math.random|new Date\(\)|require\(|import\(` is empty | lint |
+| 10 | `hooks/hooks.json` parses; the `SubagentStart` matcher is `^ck:`; `usage-log.sh` given a fixture stdin appends one valid JSON line and exits 0, and exits 0 on garbage input; `check-prereqs.sh` with a fake `~/.claude/team/` prints the warning and exits 0, and prints nothing without it | hook |
+| 11 | `skills/next/SKILL.md` and every gate-owning skill contain no token counts in user-facing text and no more than one imperative per closing message (grep for `token` outside code fences; a hand-checked list of closing messages) | house style |
+| 12 | Phase 0 answers recorded under `tests/drill/` for S1 to S8 before the release is tagged | phase 0 |
+| 13 | End-to-end drill, by hand, on both fixture projects and then on one real project: the full J1 order (§6.1), then `/ck:design` on one requirement, then `/ck:panel`; a stop during a Panel phase followed by a resume. Record the consent prompts, the files under `docs/`, `brand/`, and `.ck/runs/<id>/`, the models shown in `/workflows`, and every message the skills printed. The drill log is committed under `tests/drill/<date>.md` | e2e |
+| 14 | The J1 and J2 drills: Clare runs them on a fresh project from the README alone; every message she sees is checked against §4.8's three rules; the number of sessions and hand-offs J2 took is recorded against G5 | user |
+| 15 | Consistency: two projects' documents of each type have identical heading lists (G1) | contract |
 
-`claude plugin eval` is early access and not enabled today; when it is, the drills become an eval suite and tests 13 and 14 stop being manual.
+`claude plugin eval` is early access and not enabled today; when it is, the drills become an eval suite and tests 13 to 15 stop being manual.
 
 ---
 
-## 10. Deferred and open
+## 10. Phasing and open questions
 
-### 10.1 Deferred, with the trigger to revisit
+### 10.1 Phase one: this document
 
-| Item | Why not in phase one | Revisit when |
-|---|---|---|
-| The other seven workflows in proposal §5.3 (`opportunity`, `market-research`, `brand-guide`, `roadmap`, `feature`, `bugfix`, `gtm`) | Phase one proves the gate rule, the port, and the artifact contract on the brief and the PRD first | Phase one has been used weekly for 30 days |
-| `/ck:review`: a six-reviewer artifact review with adversarial refuters and a verify cap (designed during this PRD's review; a different product from the three-lens panel) | The panel is the decision primitive the proposal asks for; a review workflow is a second one | The panel proves too narrow for code, design, or plan reviews |
-| Persona switch skills `/ck:<name>` | team-cli's `/name` commands cover the switch route today | The retire-or-coexist decision at 90 days |
-| Persona scopes: core, project cast (the game and genre seats moved to the projects that use them), personal (Opus PRD §7.7) | The shape of the 90-day prune; casts stay generated from upstream, never hand-copied | The 90-day review |
-| `/ck:report`: a static HTML report of spend, runs, and persona usage | Phase one has no data yet; conductor's fixture-fenced cost parser and `pricing.json` are the reuse [R] | Thirty days of usage log |
-| Mockup review pages with labeled variants (§4.9) | No design stage in phase one | `/ck:brand-guide` |
-| Hook-enforced artifact gates (`SubagentStop`, exit 2) | Feedback path undocumented; plugin agents ignore per-agent hooks [D]; the validator agent covers the shape check | More than one draft in five passes the validator and still fails Gate 1 on structure |
+The plugin skeleton; 21 personas as subagents and switch commands on three tiers; the nine pipeline commands; `/ck:panel`; `/ck:next`; ten contracts; two hooks; the test suite; the marketplace entry. Done when J1 and J2 run end to end on a real project (§2.3) and Phase 0 has answers for S1 to S8.
+
+### 10.2 Phase two: building, scheduling, and seeing
+
+| Item | What it is | Why not phase one | Trigger to start |
+|---|---|---|---|
+| `/ck:feature` | The build workflow. One feature from the PRD to merged code and content: plan the slices (River and Akira), a design gate on `/ck:design`'s output, parallel implementation in git worktrees (Sasha, Akira, Alex on their tiers, one slice each), cross-model verification (a lens that did not write the code reviews it), merge, and content (Toni's release note or store copy). It is the one workflow where the proposal's parallel-build research binds, and the successor to running several terminal sessions by hand | It consumes the definition pipeline's documents (PRD, architecture, design spec, brand) as inputs, so it has nothing to build from until phase one has run on a real product. Two scope options are open (proposal §8.6): full end-to-end including marketing copy, or code-only with content as a separate workflow. **Open for Will: pull it into phase one** (§10.4) | Phase one has produced a PRD, an architecture, and one design spec on a real product |
+| `/ck:bugfix` | Reproduce, fix in a worktree, cross-model verify, merge | Needs `/ck:feature`'s worktree and verification stages | `/ck:feature` ships |
+| `/ck:gtm` | Toni's go-to-market plan from the opportunity, market research, and brand | Phase one's Toni contributions (opportunity, market research, brief) are its inputs | Phase one |
+| Routines | Scheduled runs of headless workflows; `market-research` first (weekly, on a focus) | No headless workflow the user wants scheduled yet | `market-research` has run by hand three times |
+| `/ck:map` | A Mermaid catalog from `meta.phases`, `meta.personas`, and agent frontmatter; `--run <id>` draws the per-run lens graph from `panel/*.json` | The catalog is small enough to read from files in phase one | Phase one; also feeds the Workbench |
+| `/ck:report` | Spend, runs, and persona usage from `usage.jsonl` and the session JSONL, using conductor's fixture-fenced cost parser and `pricing.json` [R] | No data yet | Thirty days of usage log |
+| `/ck:review` | A six-reviewer document review with adversarial refuters and a verify cap (designed during this PRD's first review; a different product from the three-lens panel) | The panel is the decision primitive the proposal asks for; a review workflow is a second one | The panel proves too narrow for code or plan reviews |
+| Hook-enforced document gates (`SubagentStop`, exit 2) | Feedback path undocumented; plugin agents ignore per-agent hooks [D]; the validator agent covers the shape check | More than one draft in five passes the validator and still fails the review on structure |
 | Model fallback chain | `PreModelSwitch` does not cover it [D]; null-tolerant scripts cover phase one | More than one run in ten loses a lens to an API error |
+| Persona scopes: core, project cast, personal (Opus PRD §7.7) | The shape of the 90-day prune; casts stay generated from `profiles/`, never hand-copied | The 90-day review |
 | Advisor tool | API-only and experimental [V] | Available inside Claude Code |
-| Routines | No headless workflow the user wants scheduled yet | `market-research` ships (the natural candidate) |
-| Folding in `devlog`, `roadmap`, `plans`, `todo`, `publish` as artifact contracts | Their repos work as they are; folding in orphans seven marketplace entries | A `ck` workflow needs to read one of them as a contract (`roadmap.js` first) |
-| Retiring `claude-team-cli` | No usage data | The 90-day review |
-| `/ck:map`, any workbench | §4.7 | A specific edit Will could not make in a text editor plus `bump-upstream.sh` |
-| A `bin/` CLI | Nothing needs one | Never, unless a workflow needs a helper the Bash tool should call |
-| Conductor bug fixes from proposal §9 (`update_session_field` and `insert_active_row` tmp-then-mv without a lock; `watcher.js:134` empty-cell filter vs positional awk) | They are conductor's, not `ck`'s | Filed against conductor now |
+| Folding in `devlog`, `roadmap`, `plans`, `todo`, `publish` as contracts | Their repos work as they are; `roadmap-artifact` already mirrors the roadmap skill's format so the two stay interchangeable | A second `ck` workflow needs one of them as a contract |
+| A `bin/` CLI | Nothing needs one | A workflow needs a helper the Bash tool should call |
 
-### 10.2 Open questions carried forward
+### 10.3 Phase three: the Workbench
 
-1. Proposal §8.6, verbatim: "`/ck:feature` scope. Full end-to-end including marketing copy, or code-only with content as a separate workflow?" Not needed until `feature.js`.
-2. Proposal §8.7, verbatim: "Routines integration. Which workflows, if any, should run scheduled or on GitHub events?"
-3. Does the Workflow tool's `name` parameter accept `ck:prd-draft` for a plugin workflow? `scriptPath` is the specified path; the drill tries `name` and records the answer.
-4. Does a nested `workflow({scriptPath})` prompt for consent separately on first run, and does "don't ask again for `ck:panel`" cover the nested call? The drill records it.
+Committed [W, 2026-09-08]. A rewrite that replaces the conductor dashboard, not an extension of it. What is known today:
+
+| Part | Scope |
+|---|---|
+| Shape | Local server and browser (the shape conductor settled on; Tauri dropped [R]); Python, by Will's preference; reads the `ck` source checkout, `${CLAUDE_PLUGIN_DATA}/usage.jsonl`, and the session JSONL through conductor's fixture-fenced cost parser and `pricing.json` |
+| Views | The catalog: workflows, their phases, the personas each phase uses, the tier and model of each (from `meta` and frontmatter, as `/ck:map` draws it); run history with cost per run and per persona; persona usage over time (the 90-day prune's evidence); the per-run interaction graph for panels |
+| Editors | Persona: edit a profile, see the regenerated agent and switch skill, run the tests, commit. Workflow: v2, after the persona editor has been used; a workflow is a script, and a form over a script is the trap the proposal's §9 named |
+| Never | A hosted service; its own store of personas or workflows; a live-activity view that duplicates `/workflows` |
+| Its PRD | Written after phase one has run on a real product, because the catalog and run data it displays do not exist yet. The five Opus workbench concepts (`plans/opus/2026-09-05-workbench-concepts.html`) are its starting inputs, with the verdicts in the panel memo §7 |
+
+### 10.4 Open questions
+
+For Will:
+
+1. **`/ck:feature` in phase one?** This document keeps it in phase two because it consumes phase one's documents and doubles the build. Pulling it forward is a scope decision, not an engineering one: if yes, it is added as §6.13 with the worktree stages, and Phase 0 gains a spike on `isolation: 'worktree'` for persona agents.
+2. Proposal §8.7, verbatim: "Routines integration. Which workflows, if any, should run scheduled or on GitHub events?" `market-research` is the proposed first.
+
+Harness unknowns the drill answers:
+
+3. Does the Workflow tool's `name` parameter accept `ck:draft` for a plugin workflow? `scriptPath` is the specified path; the drill tries `name` and records the answer.
+4. Does a nested `workflow({scriptPath})` prompt for consent separately on first run, and does "don't ask again for `ck:panel`" cover the nested call? (S3)
 5. Does the workflow loader accept the extra `personas` key in `meta`? The docs require `name` and `description` and describe `whenToUse` and `phases`; an extra literal key is expected to pass. Test 9 asserts it; the drill confirms `/ck:panel` still appears in autocomplete.
-6. Does `SubagentStop` exit 2 feed stderr back to a workflow agent? Decides the hook-gate spike.
-7. Aliases or full IDs in `tiers.conf`? The team-cli PR decides (§5.3).
-8. Is the Artifact tool (review pages, §4.9) available in Will's local Claude Code, and can a skill read its comments there? Phase 0 spike S5. The file-edit path covers phase one either way.
+6. Does `SubagentStop` exit 2 feed stderr back to a workflow agent? Decides the hook-gate item in §10.2.
+7. Is the publishing tool for review pages available in local Claude Code, and can a skill read its comments there? (S5) The file-edit path covers phase one either way.
+8. Is web search available to subagents inside a workflow? (S7) Without it, `market-research` and the market passes run on what is in the repository and say so.
 
 ---
 
@@ -855,18 +1179,20 @@ A user with both installed has two River subagents (`river` from `~/.claude/agen
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| Workflows unavailable (plan, `/config`, or org `disableWorkflows`) | Low for Will; real for other users | The plugin is inert | README states the prerequisite; the `prd` skill checks for the Workflow tool before anything else and stops with a plain reason |
+| Workflows unavailable (plan, `/config`, or org `disableWorkflows`) | Low for Will and Clare; real for other users | The plugin is inert | README states the prerequisite; every skill checks for the Workflow tool before anything else and stops with a plain reason |
+| Web search unavailable to subagents inside a workflow (S7) | Unknown | Market research and market passes run without sources | The document says so in its header; the Sources section lists what was read instead; Phase 0 answers it before the build |
+| The publishing tool is unavailable locally (S5) | Unknown | No review pages; every gate falls back to file edits | The fallback is specified at every gate; Clare already reviews by editing files today |
 | An API error nulls a lens | Medium | Memo on two lenses | Logged; memo header says so; re-run offered; a lens can be re-modelled per run |
-| The Fable lens dominates cost | Certain | About $0.30 to $0.50 of every panel | `--lenses` override; an all-Opus-and-Sonnet assignment is one flag away |
-| Persona text drifts from upstream | Low | Two Rivers disagree | `upstream.lock`, drift test, `bump-upstream.sh` prints the diff |
+| Fable on the judgment seats dominates cost | Certain | River's stages are the largest line in every pipeline run (Appendix I) | It is the decision Will made (§3.3 item 3); the cost is stated per command; a tier is one line in `tiers.conf` |
+| Persona text drifts between `profiles/` and the generated files | Low | A switch command and a subagent disagree | Test 2; the generator refuses a dirty tree |
 | 21 personas is 15 too many | Likely (proposal §7) | Maintenance and choice paralysis | Generated, so carrying cost is near zero; `usage.jsonl`; prune at 90 days |
-| River and Akira on Opus 5 write worse PRDs than on Fable | Unknown | Quality of the flagship artifact | One line in `tiers.conf` reverts it; the panel disagreement rate and Gate 1 edit volume are the signal |
-| The 4.7-and-later tokenizer produces about 30% more tokens [D] | Certain | Appendix H underestimates by up to 30% | Stated in Appendix H; `/workflows` shows real token totals |
-| Compaction during the interview | Medium on long interviews | Lost answers | Append-as-you-go and the resume check (§4.3) |
-| The harder user gets designed out again as features accrete | Medium | She abandons it after one bad run | J1 is a test (§9 test 14); §4.8's three rules are grep-checked (test 11); every new command needs a one-line `/ck:next` answer |
-| Consent prompts on every run annoy | Medium | Friction | "Don't ask again for `ck:panel`" on the first run; allow rules `Workflow(ck:panel)`, `Workflow(ck:prd-draft)` |
-| Two River subagents (`river`, `ck:river`) confuse delegation | Low | Wrong tier or stale text | README note; every `ck` prompt names `ck:<persona>` explicitly |
+| The 4.7-and-later tokenizer produces about 30% more tokens [D] | Certain | Appendix I underestimates by up to 30% | Stated in Appendix I; `/workflows` shows real token totals |
+| Compaction during the optional interview | Medium on long interviews | Lost answers | Append-as-you-go and the resume check (§4.3) |
+| Galleries exceed the 16 MB page limit | Low for SVG; real if raster assets creep in | A gallery cannot be published | The gallery contract forbids external and raster assets; the validator checks size |
+| Consistency erodes as commands accrete | Medium | Clare's failure mode returns | Every document has a contract and a validator; test 15 compares heading lists across projects; every new command needs a contract before a script |
+| Consent prompts on every run annoy | Medium | Friction | "Don't ask again for `ck:<name>`" on the first run of each plugin workflow; allow rules `Workflow(ck:panel)`, `Workflow(ck:draft)`, and so on |
 | `meta.personas` rejected by the loader | Low | Workflow missing from autocomplete | Open question 5; fallback is to move the roster into `description` |
+| Fan-outs too large for Clare's machine (S8) | Unknown | `team` and `market-research` run in several rounds and take longer | Concurrency is min(16, CPUs minus 2) [D]; both scripts cap their fan-out and the closing message states the elapsed time |
 
 ---
 
@@ -875,7 +1201,7 @@ A user with both installed has two River subagents (`river` from `~/.claude/agen
 ```js
 export const meta = {
   name: 'panel',
-  description: 'Three-lens decision panel: product (river), marketing (toni), and UX (kai) personas, each on a different model and each reading its own evidence, argue one question; a neutral memo surfaces where they disagree and leaves the decision to the author. Args: runId, runDir (absolute cache directory), pluginRoot, timestamp (UTC, minted by the caller with date -u), question, contextPath (optional), rationalePath (optional; each lens reads it only after forming its view), memoPath (optional; default docs/decisions/<timestamp>-panel.md), lenses (optional [{persona, lens, model, reads}]).',
+  description: 'Three-lens decision panel: product (river, Fable 5.1), marketing (toni, Opus 5), and UX (kai, Sonnet 5) personas, each on a different model and each reading its own evidence, argue one question; a neutral memo surfaces where they disagree and leaves the decision to the author. Args: runId, runDir (absolute cache directory), projectRoot (absolute path of the project repository), pluginRoot, timestamp (UTC, minted by the caller with date -u), question, contextPath (optional), rationalePath (optional; each lens reads it only after forming its view), memoPath (optional; default <projectRoot>/docs/decisions/<timestamp>-panel.md), lenses (optional [{persona, lens, model, reads}]).',
   phases: [
     { title: 'Lenses', detail: 'ck:river, ck:toni, ck:kai in parallel, one model each, each reading its own evidence, each forced to argue against itself' },
     { title: 'Synthesis', detail: 'one neutral agent writes the decision memo: agreement flagged as low-information, disagreement preserved, decision left to the author' },
@@ -883,24 +1209,26 @@ export const meta = {
   personas: ['river', 'toni', 'kai'],
 }
 
-if (!args || !args.runId || !args.runDir || !args.pluginRoot || !args.timestamp || !args.question) {
-  throw new Error('panel: args.runId, args.runDir, args.pluginRoot, args.timestamp, and args.question are required')
+if (!args || !args.runId || !args.runDir || !args.projectRoot || !args.pluginRoot || !args.timestamp || !args.question) {
+  throw new Error('panel: args.runId, args.runDir, args.projectRoot, args.pluginRoot, args.timestamp, and args.question are required')
 }
 const runDir = args.runDir
+const projectRoot = args.projectRoot
 const stamp = args.timestamp
 const question = args.question
 const contextPath = args.contextPath || null
 const rationalePath = args.rationalePath || null
-const memoPath = args.memoPath || ('docs/decisions/' + stamp + '-panel.md')
+const memoPath = args.memoPath || (projectRoot + '/docs/decisions/' + stamp + '-panel.md')
 
 // Three lenses, three models, three bodies of evidence. The same model in three
 // costumes is one opinion; the same evidence read three times is one reading.
-// This is the one script in ck allowed to set `model` on a persona agent; the
-// per-invocation model beats the agent's frontmatter tier.
+// River and Toni run on their own tiers. Kai is moved down from Opus 5 to
+// Sonnet 5 so that three lenses are three models. This is the one script in ck
+// allowed to set `model` on a persona agent, and it only ever moves a lens down.
 const DEFAULT_LENSES = [
-  { persona: 'river', lens: 'product', model: 'claude-opus-5', reads: ['docs/PRD.md', 'ROADMAP.md'] },
-  { persona: 'toni', lens: 'marketing', model: 'claude-fable-5-1', reads: ['docs/market-research.md', 'docs/gtm.md'] },
-  { persona: 'kai', lens: 'ux', model: 'claude-sonnet-5', reads: ['brand/', 'docs/mockups/'] },
+  { persona: 'river', lens: 'product', model: 'claude-fable-5-1', reads: ['docs/PRD.md', 'docs/opportunity.md', 'ROADMAP.md'] },
+  { persona: 'toni', lens: 'marketing', model: 'claude-opus-5', reads: ['docs/market-research.md', 'docs/opportunity.md'] },
+  { persona: 'kai', lens: 'ux', model: 'claude-sonnet-5', reads: ['brand/', 'docs/design/'] },
 ]
 const lenses = Array.isArray(args.lenses) && args.lenses.length
   ? args.lenses.map((l, i) => {
@@ -1017,6 +1345,7 @@ phase('Lenses')
 const roster = lenses.map(l => `${l.persona}: ${l.lens}`).join('; ')
 const results = (await parallel(lenses.map(l => () => agent(
   `You are ${l.persona}, the ${l.lens} lens on a ${lenses.length}-lens decision panel (${roster}).\n` +
+  `The project repository is ${projectRoot}; relative paths below are relative to it.\n` +
   `The question: ${question}\n` +
   `Work in two passes and keep them separate.\n` +
   `Pass 1. Read ` + (contextPath ? `${contextPath} (the material the question is about) and ` : '') +
@@ -1064,14 +1393,15 @@ const memo = await agent(
   `panelFailedToDisagree to true and say in the header that the panel should be re-run with a different ` +
   `question or lens set. State in the header that all lenses are Claude models from one training pipeline, so ` +
   `decorrelation is partial, and list what each lens actually read.\n` +
-  `Write ${memoPath} (create the directory if needed) with these sections: 1 Question and context (run id, ` +
-  `timestamp, lens table with models and evidence read, the limitation, any missing lens); 2 Recommendations ` +
-  `(table: lens | persona | model | recommendation | one-line position); 3 Agreement, flagged as ` +
-  `low-information, with why; 4 Disagreement (every point where two lenses conflict, both positions at full ` +
-  `strength, the decision the author must make); 5 Kill conditions, verbatim, each with the lens's own answer ` +
-  `to whether the material already shows it met; 6 Each lens against itself, verbatim; 7 Unique findings ` +
-  `(anything only one lens saw); 8 What nobody checked; 9 Questions between lenses (to -> question, verbatim); ` +
-  `10 Handoff briefs (verbatim, one per lens). Then return the memo object; memoPath must be '${memoPath}'.`,
+  `Write ${memoPath} (create the directory if needed) to ${args.pluginRoot}/skills/memo-artifact/SKILL.md: ` +
+  `1 Question and context (run id, timestamp, lens table with models and evidence read, the limitation, any ` +
+  `missing lens); 2 Recommendations (table: lens | persona | model | recommendation | one-line position); ` +
+  `3 Agreement, flagged as low-information, with why; 4 Disagreement (every point where two lenses conflict, ` +
+  `both positions at full strength, the decision the author must make); 5 Kill conditions, verbatim, each with ` +
+  `the lens's own answer to whether the material already shows it met; 6 Each lens against itself, verbatim; ` +
+  `7 Unique findings (anything only one lens saw); 8 What nobody checked; 9 Questions between lenses ` +
+  `(to -> question, verbatim); 10 Handoff briefs (verbatim, one per lens). Then return the memo object; ` +
+  `memoPath must be '${memoPath}'.`,
   { label: 'synthesis', phase: 'Synthesis', schema: MEMO_SCHEMA },
 )
 
@@ -1094,36 +1424,79 @@ log(`panel: agreement rate ${memo.agreementRate}; ${memo.disagreements.length} d
 return { runId: args.runId, ...memo, lenses: lenses.map(l => l.persona), missing }
 ```
 
-## Appendix B. `workflows/prd-draft.js`
+## Appendix B. `workflows/draft.js`
+
+One drafting engine for the PRD and the architecture document (§4.1). The skill passes `args.artifact`; everything that differs between the two lives in the `ARTIFACTS` table.
 
 ```js
 export const meta = {
-  name: 'prd-draft',
-  description: "River drafts docs/PRD.md from docs/brief.md to Part B of the prd-artifact contract, a checker validates it, the three-lens panel challenges it (forming its view before reading the brief), and River rewrites it with a Challenged claims appendix and a premortem. Args: runId, runDir (absolute cache directory), pluginRoot, timestamp, briefPath (optional; default docs/brief.md), prdPath (optional; default docs/PRD.md), startAt (optional: draft | validate | panel | synthesize; earlier stages are skipped and the PRD on disk is used), lenses (optional). Normally launched by /ck:prd, which owns the review before and after.",
+  name: 'draft',
+  description: "One author drafts a document to its contract, a checker validates it, the three-lens panel challenges it (forming its view before reading the rationale), and the author rewrites it with a Challenged claims appendix and a premortem. Serves the PRD (river; lenses river, toni, kai) and the architecture document (akira; lenses morgan, alex, jordan). Args: artifact ('prd' | 'architecture'), runId, runDir (absolute cache directory), projectRoot (absolute path of the project repository), pluginRoot, timestamp, inputs (absolute paths of the documents to read; the skill lists the ones that exist), outputPath (optional; default from the artifact table), startAt (optional: draft | validate | panel | synthesize; earlier stages are skipped and the document on disk is used), lenses (optional). Normally launched by /ck:prd or /ck:architecture, which own the review before and after.",
   phases: [
-    { title: 'Draft', detail: 'ck:river writes docs/PRD.md from docs/brief.md to the contract; every non-brief claim tagged [C<n>]' },
-    { title: 'Validate', detail: 'one neutral Haiku agent checks Part B of the contract; ck:river revises at most twice' },
-    { title: 'Panel', detail: "nested /ck:panel on the draft: is it ready for the author's review, and what would you change" },
-    { title: 'Synthesize', detail: 'ck:river rewrites docs/PRD.md: revised PRD, Appendix A Challenged claims, Appendix B Premortem' },
+    { title: 'Draft', detail: 'the author writes the document from its inputs to the contract; every claim not from the inputs tagged [C<n>]' },
+    { title: 'Validate', detail: 'one neutral Haiku agent checks the contract checklist; the author revises at most twice' },
+    { title: 'Panel', detail: 'nested /ck:panel on the draft, three lenses on three models, each reading its own evidence' },
+    { title: 'Synthesize', detail: 'the author rewrites the document: revised body, Appendix A Challenged claims, Appendix B Premortem' },
   ],
-  personas: ['river', 'toni', 'kai'],
+  personas: ['river', 'toni', 'kai', 'akira', 'morgan', 'alex', 'jordan'],
 }
 
-if (!args || !args.runId || !args.runDir || !args.pluginRoot || !args.timestamp) {
-  throw new Error('prd-draft: args.runId, args.runDir, args.pluginRoot, and args.timestamp are required')
+const ARTIFACTS = {
+  prd: {
+    author: 'river',
+    path: 'docs/PRD.md',
+    contract: 'skills/prd-artifact/SKILL.md',
+    rationale: 'docs/brief.md',
+    sections: ['Summary', 'Problem', 'User', 'Success metric and leading indicator', 'Scope', 'Non-goals', 'Requirements', 'Sequencing and dependencies', 'Assumptions', 'Risks', 'Open questions', 'Appendix A. Challenged claims', 'Appendix B. Premortem'],
+    question: "Is this PRD ready for the author's review, and what would you change before it ships?",
+    premortem: 'this shipped on time and did not move the success metric',
+    memoSlug: 'prd-review',
+    lenses: [
+      { persona: 'river', lens: 'product', model: 'claude-fable-5-1', reads: ['docs/brief.md', 'docs/opportunity.md', 'ROADMAP.md'] },
+      { persona: 'toni', lens: 'marketing', model: 'claude-opus-5', reads: ['docs/market-research.md', 'docs/opportunity.md'] },
+      { persona: 'kai', lens: 'ux', model: 'claude-sonnet-5', reads: ['brand/', 'docs/design/'] },
+    ],
+  },
+  architecture: {
+    author: 'akira',
+    path: 'docs/ARCHITECTURE.md',
+    contract: 'skills/architecture-artifact/SKILL.md',
+    rationale: 'docs/PRD.md',
+    sections: ['Context and constraints', 'Quality attributes', 'Recommended architecture', 'Components', 'Data model sketch', 'Integration points and external dependencies', 'Alternatives considered', 'Decision record', 'Sequencing against the roadmap', 'Risks', 'Open questions', 'Appendix A. Challenged claims', 'Appendix B. Premortem'],
+    question: 'Would you build it this way, and what would you change before the first line of code?',
+    premortem: 'this shipped and fell over in production in its first month',
+    memoSlug: 'architecture-review',
+    lenses: [
+      { persona: 'morgan', lens: 'security', model: 'claude-fable-5-1', reads: ['docs/PRD.md', 'SECURITY.md'] },
+      { persona: 'alex', lens: 'platform', model: 'claude-sonnet-5', reads: ['infra/', 'Dockerfile', '.github/workflows/'] },
+      { persona: 'jordan', lens: 'data', model: 'claude-opus-5', reads: ['docs/market-research.md', 'data/', 'schema/'] },
+    ],
+  },
 }
+
+if (!args || !args.artifact || !ARTIFACTS[args.artifact]) {
+  throw new Error("draft: args.artifact must be one of " + Object.keys(ARTIFACTS).join(', '))
+}
+if (!args.runId || !args.runDir || !args.projectRoot || !args.pluginRoot || !args.timestamp) {
+  throw new Error('draft: args.runId, args.runDir, args.projectRoot, args.pluginRoot, and args.timestamp are required')
+}
+const A = ARTIFACTS[args.artifact]
 const runDir = args.runDir
+const projectRoot = args.projectRoot
 const stamp = args.timestamp
-const brief = args.briefPath || 'docs/brief.md'
-const prdPath = args.prdPath || 'docs/PRD.md'
-const contract = args.pluginRoot + '/skills/prd-artifact/SKILL.md'
+const author = 'ck:' + A.author
+const outPath = args.outputPath || (projectRoot + '/' + A.path)
+const rationalePath = projectRoot + '/' + A.rationale
+const contract = args.pluginRoot + '/' + A.contract
+const inputs = Array.isArray(args.inputs) && args.inputs.length ? args.inputs : [rationalePath]
+const SECTIONS = A.sections
 const MAX_REVISIONS = 2
 const VALIDATOR_MODEL = 'claude-haiku-4-5-20251001'
 
 const ORDER = ['draft', 'validate', 'panel', 'synthesize']
 const startAt = ORDER.includes(args.startAt) ? args.startAt : 'draft'
 const runs = stage => ORDER.indexOf(stage) >= ORDER.indexOf(startAt)
-if (startAt !== 'draft') log(`prd-draft: starting at ${startAt}; ${prdPath} on disk is the draft`)
+if (startAt !== 'draft') log(`draft: starting at ${startAt}; ${outPath} on disk is the draft`)
 
 const QUESTION = {
   type: 'object',
@@ -1134,9 +1507,8 @@ const QUESTION = {
 const DRAFT_SCHEMA = {
   type: 'object',
   properties: {
-    prdPath: { type: 'string' },
+    path: { type: 'string' },
     title: { type: 'string' },
-    rootCauseChain: { type: 'array', items: { type: 'string' } },
     claims: {
       type: 'array',
       items: {
@@ -1146,18 +1518,9 @@ const DRAFT_SCHEMA = {
       },
     },
     assumptions: { type: 'array', items: { type: 'string' } },
-    v0: {
-      type: 'object',
-      properties: {
-        scope: { type: 'string' },
-        cuts: { type: 'array', items: { type: 'string' } },
-        recommendation: { type: 'string' },
-      },
-      required: ['scope', 'cuts', 'recommendation'],
-    },
     questions: { type: 'array', items: QUESTION },
   },
-  required: ['prdPath', 'title', 'rootCauseChain', 'claims', 'assumptions', 'v0', 'questions'],
+  required: ['path', 'title', 'claims', 'assumptions', 'questions'],
 }
 
 const VALIDATION_SCHEMA = {
@@ -1170,10 +1533,10 @@ const VALIDATION_SCHEMA = {
   required: ['valid', 'missing', 'notes'],
 }
 
-const PRD_SCHEMA = {
+const FINAL_SCHEMA = {
   type: 'object',
   properties: {
-    prdPath: { type: 'string' },
+    path: { type: 'string' },
     title: { type: 'string' },
     challengedClaims: {
       type: 'array',
@@ -1201,7 +1564,7 @@ const PRD_SCHEMA = {
     openDecisions: { type: 'array', items: { type: 'string' } },
     summary: { type: 'string' },
   },
-  required: ['prdPath', 'title', 'challengedClaims', 'premortem', 'openDecisions', 'summary'],
+  required: ['path', 'title', 'challengedClaims', 'premortem', 'openDecisions', 'summary'],
 }
 
 // ---- Draft ----
@@ -1209,23 +1572,21 @@ let draft = null
 if (runs('draft')) {
   phase('Draft')
   draft = await agent(
-    `Read ${brief}. It records what the author already decided: the idea, the problem and its root-cause chain, ` +
-    `the user, the success metric and leading indicator, the scope decision and the smaller first version, ` +
-    `non-goals, and open questions. Do not re-ask any of it.\n` +
-    `Read Part B of ${contract}. It is the PRD contract: section order, required fields, and the checklist ` +
-    `your draft will be validated against.\n` +
-    `Write ${prdPath} to that contract, all sections in order (create the directory if needed). Apply your ` +
-    `Required Behaviors in subagent form: restate the root-cause chain from the brief and extend it if the brief ` +
-    `stopped at a symptom, saying which; always present the smaller first version with what it cuts and your ` +
-    `recommendation, even if the brief chose full scope; leave the premortem for the pass after the panel, and ` +
-    `say so under Appendix B.\n` +
-    `Tag every claim that is not taken directly from the brief with an inline marker [C1], [C2], ... so the ` +
+    `The project repository is ${projectRoot}. Read these inputs: ${inputs.join(', ')}. They record what the ` +
+    `author already decided; do not re-ask any of it.\n` +
+    `Read ${contract}. It is the contract for this document: section order, required fields, and the ` +
+    `checklist your draft will be validated against.\n` +
+    `Write ${outPath} to that contract, all sections in this order (create the directory if needed): ` +
+    SECTIONS.map(s => '"' + s + '"').join(', ') + `.\n` +
+    `Apply your Required Behaviors in subagent form. Leave Appendix B (the premortem) for the pass after the ` +
+    `panel, and say so under its heading.\n` +
+    `Tag every claim that is not taken directly from the inputs with an inline marker [C1], [C2], ... so the ` +
     `panel can address it, and list those claims with their section. Put anything you would have asked the ` +
     `author under Open questions, with your assumption.\n` +
-    `Return the draft object; prdPath must be '${prdPath}'.`,
-    { label: 'river:draft', phase: 'Draft', agentType: 'ck:river', schema: DRAFT_SCHEMA },
+    `Return the draft object; path must be '${outPath}'.`,
+    { label: `${A.author}:draft`, phase: 'Draft', agentType: author, schema: DRAFT_SCHEMA },
   )
-  if (!draft) throw new Error('prd-draft: River returned nothing for the draft')
+  if (!draft) throw new Error(`draft: ${A.author} returned nothing for the draft`)
   log(`draft: ${draft.claims.length} tagged claim(s), ${draft.assumptions.length} assumption(s), ${draft.questions.length} open question(s)`)
 }
 
@@ -1235,7 +1596,7 @@ if (runs('validate')) {
   phase('Validate')
   for (let round = 1; round <= MAX_REVISIONS + 1; round++) {
     validation = await agent(
-      `Read Part B of ${contract} and ${prdPath}. Check the PRD against every numbered item in Part B's ` +
+      `Read ${contract} and ${outPath}. Check the document against every numbered item in the contract's ` +
       `checklist and against the section order. Return valid=true only if every item holds. For each unmet ` +
       `item, one line in missing that quotes the checklist item and says what is absent or wrong. Judge the ` +
       `shape, not the product.`,
@@ -1247,38 +1608,35 @@ if (runs('validate')) {
       log(`validate: still unmet after ${MAX_REVISIONS} revision(s): ${validation.missing.join(' | ')}`)
       break
     }
-    log(`validate: ${validation.missing.length} unmet item(s); River revises (revision ${round} of ${MAX_REVISIONS})`)
+    log(`validate: ${validation.missing.length} unmet item(s); ${A.author} revises (revision ${round} of ${MAX_REVISIONS})`)
     const revised = await agent(
-      `Read Part B of ${contract}, ${brief}, and ${prdPath}. A checker found these unmet checklist items:\n` +
-      validation.missing.map(m => '- ' + m).join('\n') + '\n' +
-      `Revise ${prdPath} in place so each item holds. Keep every existing [C<n>] tag and add tags for any new ` +
-      `claim not from the brief. Return the updated draft object; prdPath must be '${prdPath}'.`,
-      { label: `river:revise:${round}`, phase: 'Validate', agentType: 'ck:river', schema: DRAFT_SCHEMA },
+      `Read ${contract}, the inputs (${inputs.join(', ')}), and ${outPath}. A checker found these unmet ` +
+      `checklist items:\n` + validation.missing.map(m => '- ' + m).join('\n') + '\n' +
+      `Revise ${outPath} in place so each item holds. Keep every existing [C<n>] tag and add tags for any new ` +
+      `claim not from the inputs. Return the updated draft object; path must be '${outPath}'.`,
+      { label: `${A.author}:revise:${round}`, phase: 'Validate', agentType: author, schema: DRAFT_SCHEMA },
     )
     if (!revised) { log('validate: revision returned nothing; keeping the previous draft'); break }
     draft = revised
   }
 }
 
-// ---- Panel (nested; one level only; each lens reads its own evidence and sees the brief last) ----
+// ---- Panel (nested; one level only; each lens reads its own evidence and sees the rationale last) ----
 let panel = null
 if (runs('panel')) {
   phase('Panel')
-  const lenses = Array.isArray(args.lenses) && args.lenses.length ? args.lenses : [
-    { persona: 'river', lens: 'product', model: 'claude-opus-5', reads: ['ROADMAP.md'] },
-    { persona: 'toni', lens: 'marketing', model: 'claude-fable-5-1', reads: ['docs/market-research.md', 'docs/gtm.md'] },
-    { persona: 'kai', lens: 'ux', model: 'claude-sonnet-5', reads: ['brand/', 'docs/mockups/'] },
-  ]
+  const lenses = Array.isArray(args.lenses) && args.lenses.length ? args.lenses : A.lenses
   try {
     panel = await workflow({ scriptPath: args.pluginRoot + '/workflows/panel.js' }, {
       runId: args.runId,
       runDir,
+      projectRoot,
       pluginRoot: args.pluginRoot,
       timestamp: stamp,
-      question: "Is this PRD ready for the author's review, and what would you change before it ships?",
-      contextPath: prdPath,
-      rationalePath: brief,
-      memoPath: 'docs/decisions/' + stamp + '-prd-review.md',
+      question: A.question,
+      contextPath: outPath,
+      rationalePath,
+      memoPath: projectRoot + '/docs/decisions/' + stamp + '-' + A.memoSlug + '.md',
       lenses,
     })
   } catch (e) {
@@ -1297,37 +1655,37 @@ const panelInputs = panel && panel.memoPath
   ? `${panel.memoPath} and every file under ${runDir}/panel/`
   : (panel
     ? `every file under ${runDir}/panel/ (the memo was not written)`
-    : 'nothing else: the panel did not run, and the PRD header must say so')
-const prd = await agent(
-  `Read ${brief}, ${prdPath}, Part B of ${contract}, and ${panelInputs}.\n` +
-  `Rewrite ${prdPath}: the same sections, in contract order, revised where the panel showed a claim wrong or ` +
+    : 'nothing else: the panel did not run, and the document header must say so')
+const final = await agent(
+  `Read the inputs (${inputs.join(', ')}), ${outPath}, ${contract}, and ${panelInputs}.\n` +
+  `Rewrite ${outPath}: the same sections, in contract order, revised where the panel showed a claim wrong or ` +
   `unsupported, followed by two appendices.\n` +
   `Appendix A, Challenged claims: one row per point a lens raised against a [C<n>] claim or against something ` +
   `untagged: claim | challenged by (persona and lens) | severity (blocking, major, minor: your call from the ` +
   `memo) | status | resolution. Status is upheld (you kept it; say why), revised (you changed it; quote the ` +
   `change), withdrawn, or open (the author must decide). Never delete a challenge. Reproduce the memo's ` +
   `Disagreement section and its Kill conditions verbatim below the table.\n` +
-  `Appendix B, Premortem: your Required Behavior in subagent form. Write the 2-3 sentence scenario in which ` +
-  `this shipped on time and did not move the success metric; name the hidden assumption it exposes; add that ` +
-  `assumption to the Assumptions section; leave the question "What went wrong?" verbatim for the author. ` +
-  `The review asks it.\n` +
-  `Check your own output against Part B's checklist before returning. List every decision you left open ` +
-  `under openDecisions. Generated ${stamp}, run ${args.runId}. Return the PRD object; prdPath must be '${prdPath}'.`,
-  { label: 'river:synthesize', phase: 'Synthesize', agentType: 'ck:river', schema: PRD_SCHEMA },
+  `Appendix B, Premortem: write the 2-3 sentence scenario in which ${A.premortem}; name the hidden assumption ` +
+  `it exposes; add that assumption to the Assumptions section; leave the question "What went wrong?" ` +
+  `verbatim for the author. The review asks it.\n` +
+  `Check your own output against the contract's checklist before returning. List every decision you left ` +
+  `open under openDecisions. Generated ${stamp}, run ${args.runId}. Return the object; path must be '${outPath}'.`,
+  { label: `${A.author}:synthesize`, phase: 'Synthesize', agentType: author, schema: FINAL_SCHEMA },
 )
-if (!prd) throw new Error('prd-draft: River returned nothing for the synthesis; the draft is at ' + prdPath)
+if (!final) throw new Error(`draft: ${A.author} returned nothing for the synthesis; the draft is at ` + outPath)
 
 return {
   runId: args.runId,
+  artifact: args.artifact,
   startedAt: startAt,
-  prdPath: prd.prdPath,
+  path: final.path,
   memoPath: panel ? panel.memoPath : null,
   lenses: panel ? panel.lenses : [],
   validation,
-  challengedClaims: prd.challengedClaims,
-  premortem: prd.premortem,
-  openDecisions: prd.openDecisions,
-  summary: prd.summary,
+  challengedClaims: final.challengedClaims,
+  premortem: final.premortem,
+  openDecisions: final.openDecisions,
+  summary: final.summary,
 }
 ```
 
@@ -1336,21 +1694,51 @@ return {
 ```js
 export const meta = {
   name: 'brief',
-  description: 'River writes docs/brief.md from one line of idea text, to Part A of the prd-artifact contract, and a checker validates the shape. Args: runId, runDir (absolute cache directory), pluginRoot, timestamp, idea (text), briefPath (optional; default docs/brief.md).',
+  description: 'Toni runs a basic market pass (three to five comparable products, sourced), River writes docs/brief.md from one line of idea text to the brief contract, and a checker validates the shape. Args: runId, runDir (absolute cache directory), projectRoot (absolute path of the project repository), pluginRoot, timestamp, idea (text; may be empty when opportunityPath is given), opportunityPath (optional; absolute), marketResearchPath (optional; absolute), briefPath (optional; default <projectRoot>/docs/brief.md).',
   phases: [
-    { title: 'Draft', detail: 'ck:river writes the brief: problem and root-cause chain, user, success metric, scope with a smaller first version, non-goals, open questions' },
-    { title: 'Validate', detail: 'one neutral Haiku agent checks Part A of the contract; ck:river revises at most once' },
+    { title: 'Market pass', detail: 'ck:toni finds three to five comparable products with a source each, reading market research and the opportunity first when they exist' },
+    { title: 'Draft', detail: 'ck:river writes the brief: problem and root-cause chain, user, success metric, comparable products, scope with a smaller first version, non-goals, open questions' },
+    { title: 'Validate', detail: 'one neutral Haiku agent checks the brief contract; ck:river revises at most once' },
   ],
-  personas: ['river'],
+  personas: ['toni', 'river'],
 }
 
-if (!args || !args.runId || !args.runDir || !args.pluginRoot || !args.timestamp || !args.idea) {
-  throw new Error('brief: args.runId, args.runDir, args.pluginRoot, args.timestamp, and args.idea are required')
+if (!args || !args.runId || !args.runDir || !args.projectRoot || !args.pluginRoot || !args.timestamp) {
+  throw new Error('brief: args.runId, args.runDir, args.projectRoot, args.pluginRoot, and args.timestamp are required')
 }
-const briefPath = args.briefPath || 'docs/brief.md'
-const contract = args.pluginRoot + '/skills/prd-artifact/SKILL.md'
+if (!args.idea && !args.opportunityPath) {
+  throw new Error('brief: give an idea in a sentence, or run /ck:opportunity first so the brief can start from docs/opportunity.md')
+}
+const projectRoot = args.projectRoot
+const briefPath = args.briefPath || (projectRoot + '/docs/brief.md')
+const contract = args.pluginRoot + '/skills/brief-artifact/SKILL.md'
 const stamp = args.timestamp
+const runDir = args.runDir
+const existing = [args.opportunityPath, args.marketResearchPath].filter(Boolean)
+const ideaText = args.idea || 'Take the idea from the concept statement in ' + args.opportunityPath
 const VALIDATOR_MODEL = 'claude-haiku-4-5-20251001'
+const SECTIONS = ['Idea', 'Problem and root-cause chain', 'User', 'Success metric and leading indicator', 'Comparable products', 'Scope', 'Non-goals', 'Open questions for the author']
+
+const MARKET_SCHEMA = {
+  type: 'object',
+  properties: {
+    comparables: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' }, what: { type: 'string' }, who: { type: 'string' },
+          price: { type: 'string' }, gap: { type: 'string' }, source: { type: 'string' },
+        },
+        required: ['name', 'what', 'who', 'price', 'gap', 'source'],
+      },
+    },
+    crowding: { type: 'string' },
+    readFirst: { type: 'array', items: { type: 'string' } },
+    searchesRun: { type: 'number' },
+  },
+  required: ['comparables', 'crowding', 'readFirst', 'searchesRun'],
+}
 
 const BRIEF_SCHEMA = {
   type: 'object',
@@ -1361,6 +1749,7 @@ const BRIEF_SCHEMA = {
     user: { type: 'string' },
     successMetric: { type: 'string' },
     leadingIndicator: { type: 'string' },
+    comparables: { type: 'number' },
     v0: {
       type: 'object',
       properties: {
@@ -1373,7 +1762,7 @@ const BRIEF_SCHEMA = {
     nonGoals: { type: 'array', items: { type: 'string' } },
     openQuestions: { type: 'array', items: { type: 'string' } },
   },
-  required: ['briefPath', 'title', 'rootCauseChain', 'user', 'successMetric', 'leadingIndicator', 'v0', 'nonGoals', 'openQuestions'],
+  required: ['briefPath', 'title', 'rootCauseChain', 'user', 'successMetric', 'leadingIndicator', 'comparables', 'v0', 'nonGoals', 'openQuestions'],
 }
 
 const VALIDATION_SCHEMA = {
@@ -1386,12 +1775,32 @@ const VALIDATION_SCHEMA = {
   required: ['valid', 'missing', 'notes'],
 }
 
+// ---- Market pass ----
+phase('Market pass')
+const market = await agent(
+  `The idea, in the author's words: ${ideaText}\n` +
+  (existing.length
+    ? `Read these first and search only for what they lack: ${existing.join(', ')}. List what you read in readFirst.\n`
+    : `There is no market research or opportunity analysis yet; readFirst is empty.\n`) +
+  `Find three to five comparable products: for each, what it does, who it is for, its price or business ` +
+  `model, the gap this idea would fill, and one source URL. Add one paragraph on how crowded the space is. ` +
+  `Use web search; record how many searches you ran. Write the object as JSON to ${runDir}/market.json and return it.`,
+  { label: 'toni:market', phase: 'Market pass', agentType: 'ck:toni', schema: MARKET_SCHEMA },
+)
+if (!market) log('market pass: Toni returned nothing; the brief will say the comparable-products section is pending')
+else log(`market pass: ${market.comparables.length} comparable(s), ${market.searchesRun} search(es)`)
+
 // ---- Draft ----
 phase('Draft')
 let brief = await agent(
-  `The author's idea, in their own words: ${args.idea}\n` +
-  `Read Part A of ${contract}. It is the brief contract: section order, required fields, and the checklist ` +
-  `your brief will be validated against.\n` +
+  `The author's idea, in their own words: ${ideaText}\n` +
+  (existing.length ? `Also read: ${existing.join(', ')}.\n` : '') +
+  `Read ${contract}. It is the brief contract: section order, required fields, and the checklist your brief ` +
+  `will be validated against. The sections, in order: ` + SECTIONS.map(s => '"' + s + '"').join(', ') + `.\n` +
+  (market
+    ? `Comparable products, from Toni's market pass (attribute the section to it and cite its sources):\n` +
+      JSON.stringify(market, null, 1) + '\n'
+    : `The market pass returned nothing; write the Comparable products section as "pending" and say why.\n`) +
   `Write ${briefPath} to that contract (create the directory if needed). Apply your Required Behaviors in ` +
   `subagent form. Three Whys: do not accept the idea as the problem; write the chain (idea, why, why, why), ` +
   `each step more specific, until the user pain is exposed or the idea is shown to address a symptom, and say ` +
@@ -1400,16 +1809,16 @@ let brief = await agent(
   `One primary user. One success number with a target and a date, plus one leading indicator. At least two ` +
   `non-goals. Anything you would have asked the author goes under Open questions for the author, each with ` +
   `the assumption you proceeded on; the list is present even when empty.\n` +
-  `Plain words: the author may not be technical. Return the brief object; briefPath must be '${briefPath}'.`,
+  `Plain words. Return the brief object; briefPath must be '${briefPath}'; comparables is the count you wrote.`,
   { label: 'river:draft', phase: 'Draft', agentType: 'ck:river', schema: BRIEF_SCHEMA },
 )
 if (!brief) throw new Error('brief: River returned nothing')
-log(`brief: ${brief.rootCauseChain.length} step(s) in the root-cause chain, ${brief.openQuestions.length} open question(s)`)
+log(`brief: ${brief.rootCauseChain.length} step(s) in the root-cause chain, ${brief.comparables} comparable(s), ${brief.openQuestions.length} open question(s)`)
 
 // ---- Validate ----
 phase('Validate')
 const validation = await agent(
-  `Read Part A of ${contract} and ${briefPath}. Check the brief against every numbered item in Part A's ` +
+  `Read ${contract} and ${briefPath}. Check the brief against every numbered item in the contract's ` +
   `checklist and against the section order. Return valid=true only if every item holds. For each unmet item, ` +
   `one line in missing that quotes the checklist item and says what is absent or wrong. Judge the shape, not ` +
   `the idea.`,
@@ -1418,7 +1827,7 @@ const validation = await agent(
 if (validation && !validation.valid) {
   log(`validate: ${validation.missing.length} unmet item(s); River revises once`)
   const revised = await agent(
-    `Read Part A of ${contract} and ${briefPath}. A checker found these unmet checklist items:\n` +
+    `Read ${contract} and ${briefPath}. A checker found these unmet checklist items:\n` +
     validation.missing.map(m => '- ' + m).join('\n') + '\n' +
     `Revise ${briefPath} in place so each item holds. Return the updated brief object; briefPath must be '${briefPath}'.`,
     { label: 'river:revise', phase: 'Validate', agentType: 'ck:river', schema: BRIEF_SCHEMA },
@@ -1435,13 +1844,232 @@ return {
   runId: args.runId,
   briefPath: brief.briefPath,
   title: brief.title,
+  comparables: brief.comparables,
   openQuestions: brief.openQuestions,
   validation,
   generated: stamp,
 }
 ```
 
-## Appendix D. `skills/prd/SKILL.md`
+## Appendix D. `workflows/team.js`
+
+```js
+export const meta = {
+  name: 'team',
+  description: 'Team selection and roles and responsibilities. River reads the product documents and the roster and nominates a cast with an owner per document and stage; each nominee confirms or declines on its own tier and names what it needs and one missing seat; River writes docs/TEAM.md; a checker validates it. Args: runId, runDir (absolute cache directory), projectRoot (absolute path of the project repository), pluginRoot, timestamp, inputs (absolute paths of the documents that exist: opportunity, brief, PRD, market research; at least one of the first two), teamPath (optional; default <projectRoot>/docs/TEAM.md), maxCast (optional; default 8).',
+  phases: [
+    { title: 'Nominate', detail: 'ck:river proposes the cast: an owner and reviewers per pipeline document and stage, and the missing seats' },
+    { title: 'Confirm', detail: 'every nominee, in parallel on its own tier at low effort, accepts or declines each responsibility, names its needs, one risk, and one missing seat' },
+    { title: 'Assemble', detail: 'ck:river writes docs/TEAM.md: cast, roles and responsibilities matrix, hand-off order, needs, missing seats, declined nominations' },
+    { title: 'Validate', detail: 'one neutral Haiku agent checks the team contract; ck:river revises at most once' },
+  ],
+  personas: ['river', 'akira', 'alex', 'casey', 'cornelius', 'ernie', 'iris', 'jordan', 'kai', 'morgan', 'noon', 'piper', 'quinn', 'reiner', 'rez', 'robin', 'sage', 'sasha', 'toni', 'tracy', 'travolta'],
+}
+
+if (!args || !args.runId || !args.runDir || !args.projectRoot || !args.pluginRoot || !args.timestamp) {
+  throw new Error('team: args.runId, args.runDir, args.projectRoot, args.pluginRoot, and args.timestamp are required')
+}
+if (!Array.isArray(args.inputs) || !args.inputs.length) {
+  throw new Error('team: args.inputs must list at least one of docs/opportunity.md or docs/brief.md')
+}
+const projectRoot = args.projectRoot
+const runDir = args.runDir
+const stamp = args.timestamp
+const inputs = args.inputs
+const teamPath = args.teamPath || (projectRoot + '/docs/TEAM.md')
+const roster = args.pluginRoot + '/profiles/ROSTER.md'
+const contract = args.pluginRoot + '/skills/team-artifact/SKILL.md'
+const MAX_CAST = Number.isInteger(args.maxCast) && args.maxCast > 0 ? Math.min(args.maxCast, 12) : 8
+const VALIDATOR_MODEL = 'claude-haiku-4-5-20251001'
+const SECTIONS = ['Cast', 'Roles and responsibilities', 'Hand-off order', 'Needs', 'Missing seats', 'Declined nominations']
+
+const RESPONSIBILITY = {
+  type: 'object',
+  properties: {
+    item: { type: 'string' },
+    role: { type: 'string', enum: ['owner', 'contributor', 'reviewer'] },
+  },
+  required: ['item', 'role'],
+}
+
+const NOMINATIONS_SCHEMA = {
+  type: 'object',
+  properties: {
+    productKind: { type: 'string' },
+    cast: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          persona: { type: 'string' },
+          why: { type: 'string' },
+          responsibilities: { type: 'array', items: RESPONSIBILITY },
+        },
+        required: ['persona', 'why', 'responsibilities'],
+      },
+    },
+    missingSeats: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { need: { type: 'string' }, wouldOwn: { type: 'string' }, recommendation: { type: 'string' } },
+        required: ['need', 'wouldOwn', 'recommendation'],
+      },
+    },
+  },
+  required: ['productKind', 'cast', 'missingSeats'],
+}
+
+const CONFIRMATION_SCHEMA = {
+  type: 'object',
+  properties: {
+    persona: { type: 'string' },
+    decisions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          item: { type: 'string' },
+          role: { type: 'string' },
+          accept: { type: 'boolean' },
+          reason: { type: 'string' },
+          replacement: { type: 'string' },
+        },
+        required: ['item', 'role', 'accept', 'reason', 'replacement'],
+      },
+    },
+    needs: { type: 'array', items: { type: 'object', properties: { from: { type: 'string' }, what: { type: 'string' } }, required: ['from', 'what'] } },
+    risk: { type: 'string' },
+    missingSeat: { type: 'string' },
+  },
+  required: ['persona', 'decisions', 'needs', 'risk', 'missingSeat'],
+}
+
+const TEAM_SCHEMA = {
+  type: 'object',
+  properties: {
+    teamPath: { type: 'string' },
+    cast: { type: 'array', items: { type: 'string' } },
+    owners: {
+      type: 'array',
+      items: { type: 'object', properties: { item: { type: 'string' }, owner: { type: 'string' } }, required: ['item', 'owner'] },
+    },
+    missingSeats: { type: 'array', items: { type: 'string' } },
+    declined: { type: 'number' },
+  },
+  required: ['teamPath', 'cast', 'owners', 'missingSeats', 'declined'],
+}
+
+const VALIDATION_SCHEMA = {
+  type: 'object',
+  properties: {
+    valid: { type: 'boolean' },
+    missing: { type: 'array', items: { type: 'string' } },
+    notes: { type: 'string' },
+  },
+  required: ['valid', 'missing', 'notes'],
+}
+
+// ---- Nominate ----
+phase('Nominate')
+const nominations = await agent(
+  `The project repository is ${projectRoot}. Read the product documents: ${inputs.join(', ')}. Read the ` +
+  `roster: ${roster} (one line per persona: name, role, tier, domain).\n` +
+  `Say what kind of product this is in one line (productKind). Then propose the cast, at most ${MAX_CAST} ` +
+  `personas, choosing by what the product needs, not by seniority: for each pipeline document and stage ` +
+  `(opportunity, market research, brief, PRD, roadmap, architecture, brand guide, design, and any build ` +
+  `stages the documents imply), one owner and the reviewers; when a PRD exists, one owner per requirement ` +
+  `area. Every persona in the cast gets a one-sentence why.\n` +
+  `Then the missing seats: needs no persona on the roster covers (a specific domain, legal, audio, ` +
+  `localization, and so on), what a person in that seat would own, and your recommendation: recruit, cover ` +
+  `from an existing seat (name it), or accept the gap.\n` +
+  `Write the object as JSON to ${runDir}/nominations.json and return it.`,
+  { label: 'river:nominate', phase: 'Nominate', agentType: 'ck:river', schema: NOMINATIONS_SCHEMA },
+)
+if (!nominations) throw new Error('team: River returned no nominations')
+const cast = nominations.cast.slice(0, MAX_CAST)
+log(`nominate: ${nominations.productKind}; ${cast.length} nominated; ${nominations.missingSeats.length} missing seat(s)`)
+
+// ---- Confirm ----
+phase('Confirm')
+const confirmations = (await parallel(cast.map(n => () => agent(
+  `You are ${n.persona}. You have been nominated to this product's team. Read ${inputs.join(', ')} and ` +
+  `${roster}.\n` +
+  `Your nomination: ${n.why}. Responsibilities proposed for you:\n` +
+  n.responsibilities.map(r => `- ${r.role} of ${r.item}`).join('\n') + '\n' +
+  `For each responsibility: accept or decline, with a reason from your domain; when you decline, name the ` +
+  `roster persona who should have it instead (replacement), or "none" with the gap stated. Then: what you need ` +
+  `from whom before you can start (needs); one risk in your domain for this product (risk); and one seat you ` +
+  `think is missing from the roster for this product, or "none" (missingSeat). Be brief; this is a staffing ` +
+  `check, not the work itself. Write the object as JSON to ${runDir}/confirmations/${n.persona}.json (create ` +
+  `the directory if needed) and return it with persona '${n.persona}'.`,
+  { label: `confirm:${n.persona}`, phase: 'Confirm', agentType: 'ck:' + n.persona, effort: 'low', schema: CONFIRMATION_SCHEMA },
+)))).filter(Boolean)
+const silent = cast.filter(n => !confirmations.some(c => c.persona === n.persona)).map(n => n.persona)
+if (silent.length) log(`confirm: ${silent.join(', ')} returned nothing; treated as accepting their nomination as proposed`)
+const declined = confirmations.reduce((sum, c) => sum + c.decisions.filter(d => !d.accept).length, 0)
+log(`confirm: ${confirmations.length} confirmation(s), ${declined} declined responsibility(ies)`)
+
+// ---- Assemble ----
+phase('Assemble')
+let team = await agent(
+  `Read ${contract}. It is the team contract: section order, required fields, and the checklist. The ` +
+  `sections, in order: ` + SECTIONS.map(s => '"' + s + '"').join(', ') + `.\n` +
+  `Your nominations: ${runDir}/nominations.json. The confirmations: every file under ${runDir}/confirmations/ ` +
+  (silent.length ? `(${silent.join(', ')} did not answer; treat their nominations as accepted and say so). ` : '') +
+  `The product documents: ${inputs.join(', ')}. The roster: ${roster}.\n` +
+  `Write ${teamPath} (create the directory if needed): the Cast table (persona, role, tier, why on this ` +
+  `product); the Roles and responsibilities matrix (one row per pipeline document and stage, and per PRD ` +
+  `requirement area when a PRD exists; columns owner, contributors, reviewers; exactly one owner per row); ` +
+  `the Hand-off order (who hands to whom, in pipeline order, and what each hand-off carries); Needs (per ` +
+  `persona, from the confirmations); Missing seats (yours and the nominees', merged, with a recommendation ` +
+  `each); Declined nominations (persona, responsibility, reason, replacement). Where a nominee declined and ` +
+  `named a replacement, take it or say why not. Generated ${stamp}, run ${args.runId}.\n` +
+  `Return the object; teamPath must be '${teamPath}'; declined is the number of declined responsibilities.`,
+  { label: 'river:assemble', phase: 'Assemble', agentType: 'ck:river', schema: TEAM_SCHEMA },
+)
+if (!team) throw new Error('team: River returned nothing for the assembly; nominations and confirmations are under ' + runDir)
+
+// ---- Validate ----
+phase('Validate')
+const validation = await agent(
+  `Read ${contract} and ${teamPath}. Check the document against every numbered item in the contract's ` +
+  `checklist and against the section order, including "every pipeline document has exactly one owner". ` +
+  `Return valid=true only if every item holds; for each unmet item, one line in missing that quotes the ` +
+  `checklist item and says what is absent or wrong.`,
+  { label: 'validate', phase: 'Validate', model: VALIDATOR_MODEL, effort: 'low', schema: VALIDATION_SCHEMA },
+)
+if (validation && !validation.valid) {
+  log(`validate: ${validation.missing.length} unmet item(s); River revises once`)
+  const revised = await agent(
+    `Read ${contract} and ${teamPath}. A checker found these unmet checklist items:\n` +
+    validation.missing.map(m => '- ' + m).join('\n') + '\n' +
+    `Revise ${teamPath} in place so each item holds. Return the updated object; teamPath must be '${teamPath}'.`,
+    { label: 'river:revise', phase: 'Validate', agentType: 'ck:river', schema: TEAM_SCHEMA },
+  )
+  if (revised) team = revised
+  else log('validate: revision returned nothing; keeping the first assembly')
+} else if (!validation) {
+  log('validate: validator returned nothing; proceeding unvalidated')
+} else {
+  log('validate: TEAM.md passes the contract checklist')
+}
+
+return {
+  runId: args.runId,
+  teamPath: team.teamPath,
+  productKind: nominations.productKind,
+  cast: team.cast,
+  owners: team.owners,
+  missingSeats: team.missingSeats,
+  declined: team.declined,
+  silent,
+  validation,
+  generated: stamp,
+}
+```
+
+## Appendix E. `skills/prd/SKILL.md`
 
 ````markdown
 ---
@@ -1451,7 +2079,9 @@ disable-model-invocation: true
 argument-hint: "[--interview] [idea]"
 ---
 
-You are River for the whole of this skill. Read `${CLAUDE_PLUGIN_ROOT}/agents/river.md` for your voice and standards. Speak plainly: the person running this may not be technical. Never print a stack trace, a model name, or a token count. Always name the file that holds the work so far. Always give exactly one next action.
+You are River for the whole of this skill. Read `${CLAUDE_PLUGIN_ROOT}/agents/river.md` for your voice and standards. Speak plainly. Never print a stack trace. Always name the file that holds the work so far. Always give exactly one next action.
+
+`<project-repo>` below is the repository Claude Code was opened in. Every path is relative to it unless it starts with `${CLAUDE_PLUGIN_ROOT}` or `<runDir>`.
 
 ## 0. Preconditions
 
@@ -1461,7 +2091,7 @@ Confirm the Workflow tool is available in this session. If it is not, stop and s
 
 - If `docs/brief.md` exists, go to step 3.
 - If it does not and `--interview` was given, run step 2.
-- Otherwise stop with one action: "Run `/ck:brief <your idea in a sentence>` first. It takes about a minute and writes `docs/brief.md`. Then run `/ck:prd` again."
+- Otherwise stop with one action: "Run `/ck:brief <your idea in a sentence>` first. It takes about two minutes and writes `docs/brief.md`. Then run `/ck:prd` again."
 
 ## 2. The interview (only with `--interview`)
 
@@ -1484,38 +2114,42 @@ Then: "Who exactly has this problem? One main person." (options drawn from the a
 
 Propose a first version that cuts at least half the scope. Say: "Here is a smaller first version that solves the core problem: [scope]. It leaves out [list]. Would this still move [the number]?" Offer: "Build the smaller version"; "Build the full scope"; "Full scope, and here is what specifically needs the extra" (free text). Record the decision and the reason.
 
-Finally: "Default reviewers, or name them?" (record as a lens list or nothing) and "Where should the PRD go?" (default `docs/PRD.md`). Then write `docs/brief.md` from the answers, to Part A of `${CLAUDE_PLUGIN_ROOT}/skills/prd-artifact/SKILL.md`, and continue.
+Finally: "Default reviewers, or name them?" (record as a lens list or nothing) and "Where should the PRD go?" (default `docs/PRD.md`). Then write `docs/brief.md` from the answers, to `${CLAUDE_PLUGIN_ROOT}/skills/brief-artifact/SKILL.md`, with the Comparable products section marked pending, and continue.
 
 ## 3. Resume check
 
-Read the latest `.ck/runs/*/run.json` for this project, if any.
+Read the latest `.ck/runs/*/run.json` with `command: "prd"` for this project, if any.
 
 - If `docs/PRD.md` exists and `status` names a stopped stage, offer: "Your PRD stopped at [stage]. Everything before it is saved in `docs/PRD.md`. Continue from there, or start over?" Continue means `startAt` = that stage.
-- If `status` is `review`, go to step 7: the author has edited the file.
+- If `status` is `review`, go to step 7: the author has reviewed.
 - If `status` is `final`, ask: "The PRD is finished. Re-run the reviewers on some sections, or start over?"
 
 ## 4. Mint the run
 
 ```bash
+projectRoot="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 timestamp=$(date -u +%Y%m%dT%H%M%SZ)
 runId="${timestamp}-<slug>"
-runDir="$(pwd)/.ck/runs/${runId}"
+runDir="${projectRoot}/.ck/runs/${runId}"
 mkdir -p "$runDir"
-grep -qxF '.ck/' .git/info/exclude 2>/dev/null || echo '.ck/' >> .git/info/exclude
+grep -qxF '.ck/' "${projectRoot}/.git/info/exclude" 2>/dev/null || echo '.ck/' >> "${projectRoot}/.git/info/exclude"
 ```
 
-Write `run.json`: `{ "runId", "createdAt": timestamp, "status": "starting", "stage": "draft", "outputPath": "docs/PRD.md", "lenses" }`. The `.ck/` folder is a cache; the documents in `docs/` are the work.
+Write `run.json`: `{ "runId", "command": "prd", "createdAt": timestamp, "status": "starting", "stage": "draft", "outputPath": "docs/PRD.md", "lenses" }`. The `.ck/` folder is a cache; the documents in `docs/` are the work.
 
 ## 5. Launch the draft and wait
 
-Call the Workflow tool exactly like this (absolute paths):
+List which of these exist and pass them as `inputs`, absolute: `docs/brief.md` (required), `docs/opportunity.md`, `docs/market-research.md`, `docs/TEAM.md`, `ROADMAP.md`. Then call the Workflow tool exactly like this:
 
 ```
 Workflow({
-  scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/prd-draft.js",
+  scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/draft.js",
   args: {
-    runId: "<runId>", runDir: "<runDir>", pluginRoot: "${CLAUDE_PLUGIN_ROOT}", timestamp: "<timestamp>",
-    briefPath: "<abs>/docs/brief.md", prdPath: "<abs>/docs/PRD.md",
+    artifact: "prd",
+    runId: "<runId>", runDir: "<runDir>", projectRoot: "<projectRoot>",
+    pluginRoot: "${CLAUDE_PLUGIN_ROOT}", timestamp: "<timestamp>",
+    inputs: ["<projectRoot>/docs/brief.md", ...],
+    outputPath: "<projectRoot>/docs/PRD.md",
     startAt: "<draft, or the stage to continue from>",
     lenses: <list or null>
   }
@@ -1528,17 +2162,13 @@ If the notification reports a stop or a failure: record the failed stage in `run
 
 ## 6. The review
 
-Set `status` to `review`. Read `docs/PRD.md`. Then take one of two paths.
-
-**Review page (when the Artifact tool is available).** Publish `docs/PRD.md` as a private page. At the top put the premortem question from Appendix B and one line: "Comment on anything. Say 'done' here when you are finished." Tell the user the link and stop. When they say done: read every comment thread; apply each one to `docs/PRD.md` (write the change and the reason to `<runDir>/gate-1.md`); where you will not apply one, reply with the reason and leave it open; republish the same page; resolve each applied thread with one line saying what changed. Then go to step 7.
-
-**File edit (always).** Say: "Your PRD is at `docs/PRD.md`. Open it, change anything you like, save, and run `/ck:prd` again. I'll fold your edits in." Stop. On the next run, step 3 sees `review` and continues at step 7.
+Set `status` to `review`. Read `docs/PRD.md`. Review it per `${CLAUDE_PLUGIN_ROOT}/skills/review-page/SKILL.md`, with the premortem question from Appendix B at the top of the page. That skill publishes, waits for "done", applies every comment to `docs/PRD.md` (recording each in `<runDir>/review.md`), republishes, and resolves; or, when publishing is unavailable, prints the file-edit message and stops until the next run.
 
 ### 3. Premortem
 
-The question at the top of the review, and the first thing to ask if the author is reviewing in conversation: "Imagine this shipped on time and did not move the number. What went wrong?" Use the answer to surface the hidden assumption; do not argue with it. Record it in `<runDir>/gate-1.md`.
+The question at the top of the review, and the first thing to ask if the author is reviewing in conversation: "Imagine this shipped on time and did not move the number. What went wrong?" Use the answer to surface the hidden assumption; do not argue with it. Record it in `<runDir>/review.md`.
 
-To re-run the reviewers on named sections, call `Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/panel.js", args: { runId, runDir, pluginRoot: "${CLAUDE_PLUGIN_ROOT}", timestamp: "<new>", question: "<the focused question>", contextPath: "<abs>/docs/PRD.md", rationalePath: "<abs>/docs/brief.md", lenses } })`, record its run id, wait, and return to this step.
+To re-run the reviewers on named sections, call `Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/panel.js", args: { runId, runDir, projectRoot, pluginRoot: "${CLAUDE_PLUGIN_ROOT}", timestamp: "<new>", question: "<the focused question>", contextPath: "<projectRoot>/docs/PRD.md", rationalePath: "<projectRoot>/docs/brief.md", lenses } })`, record its run id, wait, and return to this step.
 
 ## 7. Finalize
 
@@ -1548,14 +2178,14 @@ One agent, inline:
 Agent({
   subagent_type: "ck:river",
   description: "Finalize PRD",
-  prompt: "Read docs/PRD.md and <runDir>/gate-1.md (the review comments and how each was applied, or the note that the file was edited directly). Fold the premortem answer into Assumptions and Risks, resolve each open decision as answered, keep Appendix A intact, and check the result against Part B of ${CLAUDE_PLUGIN_ROOT}/skills/prd-artifact/SKILL.md. Write docs/PRD.md. Set status 'final' in <runDir>/run.json. Return the path and a five-line summary."
+  prompt: "Read <projectRoot>/docs/PRD.md and <runDir>/review.md (the review comments and how each was applied, or the note that the file was edited directly). Fold the premortem answer into Assumptions and Risks, resolve each open decision as answered, keep Appendix A intact, and check the result against ${CLAUDE_PLUGIN_ROOT}/skills/prd-artifact/SKILL.md. Write docs/PRD.md. Set status 'final' in <runDir>/run.json. Return the path and a five-line summary."
 })
 ```
 
 Say: "Your PRD is finished: `docs/PRD.md`. Next: run `/ck:next`." If the devlog skill is installed, add that `/devlog` can record the reviewers' memo from `docs/decisions/`.
 ````
 
-## Appendix E. `skills/next/SKILL.md`
+## Appendix F. `skills/next/SKILL.md`
 
 ````markdown
 ---
@@ -1564,41 +2194,42 @@ description: Says what to run next, in one sentence, by looking at which documen
 disable-model-invocation: true
 ---
 
-Look at the project and say exactly one thing. Plain words. No model names, no token counts, no more than one action.
+Look at the project and say exactly one thing. Plain words. No token counts, no more than one action.
 
-Check, in order:
+Check, in this order, in the repository Claude Code was opened in: the latest `.ck/runs/*/run.json` (its `command` and `status`); then whether each of these exists: `docs/opportunity.md`, `docs/market-research.md`, `docs/brief.md`, `docs/TEAM.md`, `docs/PRD.md`, `ROADMAP.md`, `docs/ARCHITECTURE.md`, `docs/brand-guide.md`.
 
-1. Does `docs/brief.md` exist?
-2. Does `docs/PRD.md` exist, and what does the latest `.ck/runs/*/run.json` say its `status` is (if any)?
-3. Does `docs/decisions/` contain anything?
-
-Then say:
+Then say the first line that applies:
 
 | State | Say |
 |---|---|
-| No `docs/brief.md` | "Start with `/ck:brief` and describe your idea in a sentence. It takes about a minute and writes `docs/brief.md`." |
-| Brief, no PRD | "Run `/ck:prd`. It turns the brief into full requirements and takes a few minutes." |
-| PRD exists, status is a stopped stage | "Your PRD stopped partway. Everything so far is in `docs/PRD.md`. Run `/ck:prd` again to continue." |
-| PRD exists, status `review` | "Your PRD is waiting for your review. Open `docs/PRD.md` (or the review page), make any changes, then run `/ck:prd` again." |
-| PRD exists, status `final` or unknown | "The PRD is done. When you have a decision to make, run `/ck:panel` followed by your question. The next stages (brand guide, roadmap) are not installed yet." |
+| `run.json` says `review` | "Your [document] is waiting for your review. Open the review page or `docs/<file>`, then say done or run `/ck:<command>` again." |
+| `run.json` names a stopped stage | "Your [document] stopped partway. Everything so far is in `docs/<file>`. Run `/ck:<command>` again to continue." |
+| Nothing in `docs/` | "Start with `/ck:opportunity` and describe your idea in a sentence. It writes `docs/opportunity.md`: what the product is, who it is for, what the market looks like, and whether it is worth doing." |
+| Opportunity only | "Run `/ck:market-research` to go deeper on the market, or `/ck:brief` if the opportunity is enough to start from." |
+| Brief, no team | "Run `/ck:team`. It decides who is on this product and who owns what, and writes `docs/TEAM.md`." |
+| Brief and team, no PRD | "Run `/ck:prd`. It turns the brief into full requirements and takes a few minutes." |
+| PRD, no roadmap | "Run `/ck:roadmap`. It orders the work and writes `ROADMAP.md`." |
+| Roadmap, no architecture | "Run `/ck:architecture`. It recommends how to build it and writes `docs/ARCHITECTURE.md`." |
+| Architecture, no brand guide | "Run `/ck:brand-guide`. It takes two rounds of your review and writes the brand guide and assets." |
+| Everything above | "The definition is complete. Run `/ck:design <feature>` for any feature in the PRD, or `/ck:panel <question>` for a decision. Building features is the next release of ck." |
 
 Do not run any agent. Do not explain how the tool works unless asked.
 ````
 
-## Appendix F. `skills/prd-artifact/SKILL.md`
+## Appendix G. The brief and PRD contracts
+
+### G.1 `skills/brief-artifact/SKILL.md`
 
 ````markdown
 ---
-name: prd-artifact
-description: The Code Katz contract for a product brief (Part A) and a PRD (Part B): section order, required fields, and the checklist each must pass. Load when writing, revising, or validating a brief or a PRD, inside or outside a ck workflow.
+name: brief-artifact
+description: The Code Katz contract for a product brief: section order, required fields, and the checklist it must pass. Load when writing, revising, or validating docs/brief.md, inside or outside a ck workflow.
 user-invocable: false
 ---
 
-# The brief and PRD contract
+# The brief contract (`<project-repo>/docs/brief.md`)
 
-A document written to this contract has the same shape every time, in every project. Consistency comes from this file, not from who writes it. Plain words throughout: the author may not be technical.
-
-# Part A: the brief (`docs/brief.md`)
+A document written to this contract has the same shape every time, in every project. Consistency comes from this file, not from who writes it. Plain words throughout.
 
 ## Section order
 
@@ -1608,20 +2239,36 @@ Use these headings verbatim, in this order.
 2. `## Problem and root-cause chain`: the person's pain, not the solution. The chain written out (idea, why, why, why), each step more specific, ending at a root cause or at "this addresses a symptom", and saying which.
 3. `## User`: one main person, specific enough to recognize.
 4. `## Success metric and leading indicator`: one number, a target, a date; one early sign to watch.
-5. `## Scope`: the smaller first version (what it keeps, what it leaves out, whether it would still move the number) and River's recommendation, with the decision marked open unless the author has made it.
-6. `## Non-goals`: at least two things this will not do.
-7. `## Open questions for the author`: anything River could not answer, each with the assumption used meanwhile. Present even when empty.
+5. `## Comparable products`: three to five products, each with what it does, who it is for, its price or model, and the gap this idea fills; one source each; one paragraph on how crowded the space is. Attributed to the market pass. Cites `docs/market-research.md` when it exists. May be marked pending, with the reason, when the market pass did not run.
+6. `## Scope`: the smaller first version (what it keeps, what it leaves out, whether it would still move the number) and River's recommendation, with the decision marked open unless the author has made it.
+7. `## Non-goals`: at least two things this will not do.
+8. `## Open questions for the author`: anything River could not answer, each with the assumption used meanwhile. Present even when empty.
 
 ## Checklist A
 
-1. Every Part A section is present, in order, with its heading verbatim.
+1. Every section is present, in order, with its heading verbatim.
 2. Problem names the person's pain and the chain reaches a root cause or says it stops at a symptom.
 3. User is one person, not a category.
 4. Success metric has a number, a target, and a date, plus one leading indicator.
-5. Scope names what the smaller version leaves out and carries a recommendation.
-6. Non-goals has at least two entries.
+5. Comparable products has three to five entries with a source each, or is marked pending with a reason.
+6. Scope names what the smaller version leaves out and carries a recommendation.
+7. Non-goals has at least two entries.
 
-# Part B: the PRD (`docs/PRD.md`)
+## Writing
+
+Plain technical English: name the actor, one instruction per sentence, no filler, no loss of precision. No em-dashes in prose.
+````
+
+### G.2 `skills/prd-artifact/SKILL.md`
+
+````markdown
+---
+name: prd-artifact
+description: The Code Katz contract for a PRD: section order, required fields, claim tags, and the checklist it must pass. Load when writing, revising, or validating docs/PRD.md, inside or outside a ck workflow.
+user-invocable: false
+---
+
+# The PRD contract (`<project-repo>/docs/PRD.md`)
 
 ## Section order
 
@@ -1645,7 +2292,7 @@ Every claim not taken directly from the brief carries an inline tag `[C1]`, `[C2
 
 ## Checklist B
 
-1. Every Part B section is present, in order, with its heading verbatim.
+1. Every section is present, in order, with its heading verbatim.
 2. Problem names the pain, not the solution, and cites the root-cause chain.
 3. Success metric is one number with a target and a date, plus one leading indicator.
 4. Scope records the decision and the smaller version with what it leaves out.
@@ -1658,27 +2305,27 @@ Every claim not taken directly from the brief carries an inline tag `[C1]`, `[C2
 
 ## File paths
 
-`docs/brief.md` and `docs/PRD.md`, committed with the project. Decision memos from reviewers go to `docs/decisions/`. The author may choose other paths when running the commands.
+`<project-repo>/docs/brief.md` and `<project-repo>/docs/PRD.md`, committed with the project. Decision memos from reviewers go to `<project-repo>/docs/decisions/`. The author may choose other paths when running the commands.
 
 ## Writing
 
 Plain technical English: name the actor, one instruction per sentence, no filler, no loss of precision. Second person is fine for the reader; third person for the system.
 ````
 
-## Appendix G. `agents/river.md` as generated (excerpt)
+## Appendix H. `agents/river.md` as generated (excerpt)
 
 ```markdown
 ---
 name: river
-description: River, Product Manager. Reviews and drafts from the product manager perspective for ck panels and delegation; returns structured findings.
-model: claude-opus-5
+description: River, Product Manager. Reviews and drafts from the product manager perspective for ck workflows and delegation; returns structured findings.
+model: claude-fable-5-1
 ---
 
-<!-- GENERATED from upstream/profiles/river.md at b4b211fbf4ec6f4d365a550b55e9981610ed7dda by scripts/generate-agents.sh; edit upstream, not this file. -->
+<!-- GENERATED from profiles/river.md by scripts/generate.sh; edit the profile, not this file. -->
 
 # River — Product Manager
 
-[body verbatim from upstream/profiles/river.md through "## How You Communicate"]
+[body verbatim from profiles/river.md through "## How You Communicate"]
 
 ## Required Behaviors (subagent form)
 
@@ -1701,50 +2348,48 @@ You are running with no user present. Every behavior below still applies, in out
 
 ---
 
-You are running as a delegated subagent. When the prompt names a run directory, read inputs from it and write outputs only there. If a schema is imposed, fill every required field; anything you would have asked goes in `questions`. Return findings first, detail after.
+You are running as a delegated subagent. When the prompt names a project root and a run directory, read inputs from the project and write outputs only where the prompt says. If a schema is imposed, fill every required field; anything you would have asked goes in `questions`. Return findings first, detail after.
 ```
 
-The `model` line shows the value after the team-cli tiers PR (§8.4). Before that PR it reads `claude-fable-5`, verbatim from today's `tiers.conf`.
+## Appendix I. Cost model
 
-## Appendix H. Cost model
+Prices per million tokens from the pricing page read 2026-09-05 [D]: Fable 5.1 $10 in / $50 out; Opus 5 $5 / $25; Sonnet 5 $2 / $10; Haiku 4.5 $1 / $5. Token counts are assumptions [P] for a project with a one-page brief and a ten-page PRD; the newer tokenizer produces about 30% more tokens than these figures assume [D]. No prompt-cache sharing between persona agents (§3.3 item 13). Neutral agents assumed on Opus 5 (the session model). Web-search calls are priced as tokens read; the search itself is not separately priced here.
 
-Prices per million tokens from the pricing page read 2026-09-05 [D]: Fable 5.1 $10 in / $50 out; Opus 5 $5 / $25; Sonnet 5 $2 / $10; Haiku 4.5 $1 / $5. Token counts are assumptions [P] for a one-page context document; the newer tokenizer produces about 30% more tokens than these figures assume [D]. No prompt-cache sharing between lenses (§3.3 item 15). Neutral agents assumed on Opus 5 (the session model).
+### Per-agent assumptions
 
-### `/ck:brief`
-
-| Agent | Model | Input | Output | Cost |
+| Agent kind | Model | Input | Output | Cost each |
 |---|---|---|---|---|
-| river draft | Opus 5 | 12k | 4k | $0.16 |
-| validator | Haiku 4.5 | 8k | 1k | $0.01 |
-| **Total** | | | | **about $0.17**, plus about $0.15 if one revision runs |
+| Judgment author, draft or rewrite (River, Akira) | Fable 5.1 | 25k | 8k | $0.65 |
+| Judgment lens or contributor (River, Akira, Morgan, Jordan) | Fable 5.1 | 18k | 3k | $0.33 |
+| Craft author or contributor (Toni, Kai, Iris, Quinn) | Opus 5 | 18k | 5k | $0.22 |
+| Craft lens (Toni) | Opus 5 | 18k | 3k | $0.17 |
+| Execution lens or contributor (Kai moved down, Alex, Robin) | Sonnet 5 | 18k | 3k | $0.07 |
+| Confirm (any persona, low effort) | own tier | 8k | 1k | Fable $0.13, Opus $0.07, Sonnet $0.03 |
+| Research agent | Sonnet 5 | 20k | 3k | $0.07 |
+| Validator | Haiku 4.5 | 15k | 1k | $0.02 |
+| Synthesis or assembly, neutral | Opus 5 | 25k | 5k | $0.25 |
 
-### `/ck:panel`
+### Per-command totals
 
-| Agent | Model | Input | Output | Cost |
-|---|---|---|---|---|
-| river (product) | Opus 5 | 18k | 3k | $0.17 |
-| toni (marketing) | Fable 5.1 | 18k | 3k | $0.33 |
-| kai (ux) | Sonnet 5 | 18k | 3k | $0.07 |
-| synthesis | Opus 5 | 22k | 5k | $0.24 |
-| **Total** | | | | **about $0.80** |
+| Command | Agents | Arithmetic | About |
+|---|---|---|---|
+| `/ck:panel` | 4 | River $0.33 + Toni $0.17 + Kai $0.07 + synthesis $0.25 | **$0.80** |
+| `/ck:brief` | 3 to 4 | Toni market pass $0.22 + River $0.32 (12k/4k) + validator $0.02, plus $0.30 for one revision | **$0.55 to $0.85** |
+| `/ck:prd` | 7 to 9 | River draft $0.60 (20k/8k) + validator $0.02 + panel $0.80 + River rewrite $0.85 (35k/10k) | **$2.30**, plus $0.65 per revision, plus finalize (inline, session model, about $0.35) |
+| `/ck:architecture` | 7 to 9 | Akira draft $0.65 + validator $0.02 + panel (Morgan $0.33, Alex $0.07, Jordan $0.17, synthesis $0.25) + Akira rewrite $0.85 | **$2.40** |
+| `/ck:opportunity` | 7 to 9 | River frame $0.33 + Toni $0.22 + Akira $0.33 + domain seat $0.22 to $0.33 + Sage $0.33 + River assemble $0.85 + validator $0.02 | **$2.30 to $2.50** |
+| `/ck:market-research` | 8 to 10 | Toni plan $0.17 + 5 researchers $0.35 + cross-check $0.10 + Toni write $0.30 (25k/6k) + validator $0.02 | **$1.00 to $1.20** |
+| `/ck:team` | up to 11 | River nominate $0.33 + 8 confirms (about $0.55 mixed) + River assemble $0.45 (25k/5k) + validator $0.02 | **$1.00 to $1.40** |
+| `/ck:roadmap` | 3 to 4 | River $0.33 + Quinn $0.22 + validator $0.02, plus $0.22 for one revision | **$0.60 to $0.80** |
+| `/ck:brand-guide` | 12 across three stages | Proposals: Toni $0.17 + Iris $0.45 (SVG is output-heavy: 18k/12k) + Kai $0.30 + validator $0.02. Finalists: Iris $0.45 + Kai $0.30 + validator $0.02. Guide: Iris $0.35 + Kai $0.30 + validator $0.02 | **$2.40 to $2.60** |
+| `/ck:design` | 6 across two stages | River $0.13 (low effort) + Kai variants $0.45 + validator $0.02; Kai refine $0.35 + Robin $0.07 + validator $0.02 | **$1.00 to $1.20** |
+| `/ck:next`, `/ck:<persona>` | 0 | One main-session turn | negligible |
 
-Per-lens evidence and the second pass over the rationale add about 2k input tokens per lens over the earlier estimate.
+A full J1 on a new product, one pass through every step with one brand-guide run and no revisions: about $13. The judgment seats on Fable 5.1 are the largest line (River's four stages across brief, PRD, opportunity, team, and roadmap come to about $4 of it), which is the decision in §3.3 item 3.
 
-### `/ck:prd` (the `prd-draft` workflow)
+Concurrency: min(16, CPUs minus 2) [D]; on a 4-CPU laptop the panel runs in one round, `team`'s eight confirms in four rounds, and `draft` in about four sequential steps, since its stages depend on each other. Spike S8 records Clare's machine.
 
-| Agent | Model | Input | Output | Cost |
-|---|---|---|---|---|
-| river draft | Opus 5 | 20k | 8k | $0.30 |
-| validator | Haiku 4.5 | 15k | 1k | $0.02 |
-| panel (above) | mixed | | | $0.80 |
-| river synthesize | Opus 5 | 35k | 10k | $0.43 |
-| **Total, no revision** | | | | **about $1.55** |
-| one revision (validator again plus River revise) | | | | + about $0.32 |
-| finalize (inline, Opus 5) | | 30k | 8k | + about $0.35 |
-
-Call it $1.60 to $2.30 per PRD plus the main session's own turns. Concurrency: min(16, CPUs minus 2) [D]; on a 4-CPU laptop the panel runs in one round and `prd-draft` in about four sequential steps, since its stages depend on each other. `/ck:next` costs one main-session turn and runs no agents.
-
-## Appendix I. Sources
+## Appendix J. Sources
 
 Documentation, verified 2026-09-05:
 
@@ -1758,13 +2403,21 @@ Documentation, verified 2026-09-05:
 
 Family record [R]:
 
-- `claude-team-cli`: `ROADMAP.md` revision history (2026-07-29, 2026-07-31), `DEVLOG.md` (2026-09-04 entries), `scripts/generate-agents.sh`, `profiles/tiers.conf`, `tests/run.sh`
-- `claude-conductor`: `DEVLOG.md` (2026-07-04), `docs/2026-07-03-fable-harness-modernization-analysis.md`, `docs/2026-07-04-agent-teams-spike.md`, branch `claude/research-desktop-tile-updates-BJqoP`
+- The imported profiles and tiers: `claude-team-cli` at commit `b4b211fbf4ec6f4d365a550b55e9981610ed7dda` (`profiles/`, `profiles/tiers.conf`, `scripts/generate-agents.sh`, `tests/run.sh` as the test style)
+- `claude-conductor`: `DEVLOG.md` (2026-07-04), `docs/2026-07-03-fable-harness-modernization-analysis.md`, `docs/2026-07-04-agent-teams-spike.md`, branch `claude/research-desktop-tile-updates-BJqoP`; its JSONL cost parser and `pricing.json`
+- `claude-roadmap-skill/skills/roadmap/SKILL.md`: the `ROADMAP.md` structure that §7.6 mirrors
 - `claude-plugins`: `.claude-plugin/marketplace.json` v1.3.0
 
-The cross-model panel, 2026-09-05:
+Will's example documents, read 2026-09-08 [W]:
+
+- Project NIGHTGRID, Opportunity Analysis v1.1 (Google Docs): the shape of §7.1
+- NIGHTGRID Brand Direction Record, rev 4 (Google Docs): the shape of the brand direction record in §7.8, and the proposals-to-finalists process in §6.9
+- d20Mob Brand Identity Guide v1.2 (Google Docs): the shape of the brand guide in §7.8
+
+The reviews of this document:
 
 - The Opus PRD, its panel brief, and its workbench mockups: `plans/opus/`
 - The panel memo recording what was adopted and rejected, with reasons: `plans/2026-09-05-ck-prd-panel-memo.md`
+- Will's sixteen comments on revision 2, 2026-09-08: §3.4
 
 Research [M], [V]: as listed in the proposal's §10; this PRD adds none.
