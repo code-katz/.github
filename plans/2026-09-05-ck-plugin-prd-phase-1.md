@@ -1430,6 +1430,7 @@ const ARTIFACTS = {
     question: "Is this PRD ready for the author's review, and what would you change before it ships?",
     premortem: 'this shipped on time and did not move the success metric',
     memoSlug: 'prd-review',
+    maxWords: 3000,
     lenses: [
       { persona: 'river', lens: 'product', model: 'claude-fable-5-1', reads: ['docs/brief.md', 'docs/opportunity.md', 'ROADMAP.md'] },
       { persona: 'toni', lens: 'marketing', model: 'claude-opus-5', reads: ['docs/market-research.md', 'docs/opportunity.md'] },
@@ -1445,6 +1446,7 @@ const ARTIFACTS = {
     question: 'Would you build it this way, and what would you change before the first line of code?',
     premortem: 'this shipped and fell over in production in its first month',
     memoSlug: 'architecture-review',
+    maxWords: 3000,
     lenses: [
       { persona: 'morgan', lens: 'security', model: 'claude-fable-5-1', reads: ['docs/PRD.md', 'SECURITY.md'] },
       { persona: 'alex', lens: 'platform', model: 'claude-sonnet-5', reads: ['infra/', 'Dockerfile', '.github/workflows/'] },
@@ -1564,7 +1566,7 @@ if (runs('draft')) {
     `panel, and say so under its heading.\n` +
     `Tag every claim that is not taken directly from the inputs with an inline marker [C1], [C2], ... so the ` +
     `panel can address it, and list those claims with their section. Put anything you would have asked the ` +
-    `author under Open questions, with your assumption.\n` +
+    `author under Open questions, with your assumption. Keep the document under ${A.maxWords} words.\n` +
     `Return the draft object; path must be '${outPath}'.`,
     { label: `${A.author}:draft`, phase: 'Draft', agentType: author, schema: DRAFT_SCHEMA },
   )
@@ -1633,11 +1635,15 @@ if (runs('panel')) {
 
 // ---- Synthesize ----
 phase('Synthesize')
+// A resumed run starts here with the panel's files already on disk from the earlier run.
+const earlierMemo = projectRoot + '/docs/decisions/' + stamp + '-' + A.memoSlug + '.md'
 const panelInputs = panel && panel.memoPath
   ? `${panel.memoPath} and every file under ${runDir}/panel/`
   : (panel
     ? `every file under ${runDir}/panel/ (the memo was not written)`
-    : 'nothing else: the panel did not run, and the document header must say so')
+    : (startAt === 'synthesize'
+      ? `${earlierMemo} and every file under ${runDir}/panel/, written by the earlier run of this workflow (if neither exists, say in the document header that the panel did not run)`
+      : 'nothing else: the panel did not run, and the document header must say so'))
 const final = await agent(
   `${contractStep} Read the inputs (${inputs.join(', ')}), ${outPath}, and ${panelInputs}.\n` +
   `Rewrite ${outPath}: the same sections, in contract order, revised where the panel showed a claim wrong or ` +
@@ -1650,8 +1656,8 @@ const final = await agent(
   `Appendix B, Premortem: write the 2-3 sentence scenario in which ${A.premortem}; name the hidden assumption ` +
   `it exposes; add that assumption to the Assumptions section; leave the question "What went wrong?" ` +
   `verbatim for the author. The review asks it.\n` +
-  `Check your own output against the contract's checklist before returning. List every decision you left ` +
-  `open under openDecisions. Generated ${stamp}, run ${runId}. Return the object; path must be '${outPath}'.`,
+  `Keep the document under ${A.maxWords} words. Check your own output against the contract's checklist before ` +
+  `returning. List every decision you left open under openDecisions. Generated ${stamp}, run ${runId}. Return the object; path must be '${outPath}'.`,
   { label: `${A.author}:synthesize`, phase: 'Synthesize', agentType: author, schema: FINAL_SCHEMA },
 )
 if (!final) throw new Error(`draft: ${A.author} returned nothing for the synthesis; the draft is at ` + outPath)
@@ -1661,7 +1667,7 @@ return {
   artifact: a.artifact,
   startedAt: startAt,
   path: final.path,
-  memoPath: panel ? panel.memoPath : null,
+  memoPath: panel ? panel.memoPath : (startAt === 'synthesize' ? earlierMemo : null),
   lenses: panel ? panel.lenses : [],
   validation,
   challengedClaims: final.challengedClaims,
@@ -2152,6 +2158,8 @@ Immediately write the returned run id into `run.json` as `harnessRunId`, with `w
 
 If the notification reports a stop or a failure: record the failed stage in `run.json` and say: "I couldn't finish the [stage] step. Everything up to it is saved in `docs/PRD.md`. Run `/ck:prd` again to continue from there." Within the same session you may instead offer to relaunch with `resumeFromRunId`.
 
+If the notification reports success but says the panel did not run, relaunch with `startAt: "panel"` and wait again. Never edit `docs/PRD.md` yourself in this step or the next: the workflow and the finalize agent write it, and the main session only launches, waits, reads, and reports.
+
 ## 6. The review
 
 Set `status` to `review`. Read `docs/PRD.md`. Review it per `${CLAUDE_PLUGIN_ROOT}/skills/review-page/SKILL.md`, with the premortem question from Appendix B at the top of the page. That skill publishes, waits for "done", applies every comment to `docs/PRD.md` (recording each in `<runDir>/review.md`), republishes, and resolves; or, when publishing is unavailable, prints the file-edit message and stops until the next run.
@@ -2295,6 +2303,7 @@ Every claim not taken directly from the brief carries an inline tag `[C1]`, `[C2
 8. Assumptions includes the assumption the premortem exposed (or, before the premortem exists, says the premortem is pending).
 9. Open questions lists every decision left to the author.
 10. No em-dashes in prose. Em-dashes are acceptable only as separators in structured lists.
+11. The PRD is under 3,000 words unless the author asked for more. Requirements are numbered statements with acceptance criteria, not essays.
 
 ## File paths
 
@@ -2368,7 +2377,7 @@ Prices per million tokens from the pricing page read 2026-09-05 [D]: Fable 5.1 $
 |---|---|---|---|
 | `/ck:panel` | 4 | River $0.33 + Toni $0.17 + Kai $0.07 + synthesis $0.25. **Measured 2026-09-09, drill 4, before the length rules: $2.68** (a 4,700-word memo returned twice); the memo is now capped at 1,500 words and the return carries counts; re-measure | **$0.80 estimated; $2.68 measured before the length rules** |
 | `/ck:brief` | 3 to 4 | Toni market pass $0.22 + River $0.32 (12k/4k) + validator $0.02, plus $0.30 for one revision. **Measured 2026-09-09: $2.50 on the first drill before the length rule, $2.09 after it** (River 8.1k and Toni 9.8k output tokens for a 1,195-word brief; the return schema repeated the document and now carries counts only; re-measure) | **$0.55 to $0.85 estimated; $2.50 measured before the length rule** |
-| `/ck:prd` | 7 to 9 | River draft $0.60 (20k/8k) + validator $0.02 + panel $0.80 + River rewrite $0.85 (35k/10k) | **$2.30**, plus $0.65 per revision, plus finalize (inline, session model, about $0.35) |
+| `/ck:prd` | 7 to 9 | River draft $0.60 (20k/8k) + validator $0.02 + panel $0.80 + River rewrite $0.85 (35k/10k). **Measured 2026-09-09, drill 5, two unfinished passes: $11.87**, before the 3,000-word cap and with a resume defect since fixed; re-measure | **$2.30 estimated**, plus $0.65 per revision, plus finalize (inline, session model, about $0.35) |
 | `/ck:architecture` | 7 to 9 | Akira draft $0.65 + validator $0.02 + panel (Morgan $0.33, Alex $0.07, Jordan $0.17, synthesis $0.25) + Akira rewrite $0.85 | **$2.40** |
 | `/ck:opportunity` | 7 to 9 | River frame $0.33 + Toni $0.22 + Akira $0.33 + domain seat $0.22 to $0.33 + Sage $0.33 + River assemble $0.85 + validator $0.02 | **$2.30 to $2.50** |
 | `/ck:market-research` | 8 to 10 | Toni plan $0.17 + 5 researchers $0.35 + cross-check $0.10 + Toni write $0.30 (25k/6k) + validator $0.02 | **$1.00 to $1.20** |
