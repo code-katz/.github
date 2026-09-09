@@ -1567,7 +1567,7 @@ if (runs('draft')) {
     `panel, and say so under its heading.\n` +
     `Tag every claim that is not taken directly from the inputs with an inline marker [C1], [C2], ... so the ` +
     `panel can address it, and list those claims with their section. Put anything you would have asked the ` +
-    `author under Open questions, with your assumption. Keep the document under ${A.maxWords} words.\n` +
+    `author under Open questions, with your assumption. Keep the document under ${A.maxWords} words before the appendices.\n` +
     `Return the draft object; path must be '${outPath}'.`,
     { label: `${A.author}:draft`, phase: 'Draft', agentType: author, effort: 'medium', schema: DRAFT_SCHEMA },
   )
@@ -1657,7 +1657,7 @@ const final = await agent(
   `Appendix B, Premortem: write the 2-3 sentence scenario in which ${A.premortem}; name the hidden assumption ` +
   `it exposes; add that assumption to the Assumptions section; leave the question "What went wrong?" ` +
   `verbatim for the author. The review asks it.\n` +
-  `Keep the document under ${A.maxWords} words. Check your own output against the contract's checklist before ` +
+  `Keep the document under ${A.maxWords} words before the appendices. Check your own output against the contract's checklist before ` +
   `returning. List every decision you left open under openDecisions. Generated ${stamp}, run ${runId}. Return the object; path must be '${outPath}'.`,
   { label: `${A.author}:synthesize`, phase: 'Synthesize', agentType: author, effort: 'medium', schema: FINAL_SCHEMA },
 )
@@ -2179,7 +2179,7 @@ One agent, inline:
 Agent({
   subagent_type: "ck:river",
   description: "Finalize PRD",
-  prompt: "Read <projectRoot>/docs/PRD.md and <runDir>/review.md (the review comments and how each was applied, or the note that the file was edited directly). Fold the premortem answer into Assumptions and Risks, resolve each open decision as answered, keep Appendix A intact, and check the result against ${CLAUDE_PLUGIN_ROOT}/skills/prd-artifact/SKILL.md. Write docs/PRD.md. Set status 'final' in <runDir>/run.json. Return the path and a five-line summary."
+  prompt: "Read <projectRoot>/docs/PRD.md and <runDir>/review.md (the review comments and how each was applied, or the note that the file was edited directly). Fold the premortem answer into Assumptions and Risks, resolve each open decision as answered, keep Appendix A intact, and check the result against ${CLAUDE_PLUGIN_ROOT}/skills/prd-artifact/SKILL.md. If there is no review.md and the author left no answer to the premortem question, do not invent one: leave the question open under Appendix B and say so in the summary. Write docs/PRD.md with one Write call. Set status 'final' in <runDir>/run.json. Return the path and a five-line summary."
 })
 ```
 
@@ -2304,7 +2304,7 @@ Every claim not taken directly from the brief carries an inline tag `[C1]`, `[C2
 8. Assumptions includes the assumption the premortem exposed (or, before the premortem exists, says the premortem is pending).
 9. Open questions lists every decision left to the author.
 10. No em-dashes in prose. Em-dashes are acceptable only as separators in structured lists.
-11. The PRD is under 3,000 words unless the author asked for more. Requirements are numbered statements with acceptance criteria, not essays.
+11. The PRD, before its appendices, is under 3,000 words unless the author asked for more. Requirements are numbered statements with acceptance criteria, not essays. The appendices carry the panel's record verbatim and are not counted.
 
 ## File paths
 
@@ -2378,7 +2378,7 @@ Prices per million tokens from the pricing page read 2026-09-05 [D]: Fable 5.1 $
 |---|---|---|---|
 | `/ck:panel` | 4 | River $0.33 + Toni $0.17 + Kai $0.07 + synthesis $0.25. **Measured 2026-09-09, drill 4, before the length rules: $2.68** (a 4,700-word memo returned twice); the memo is now capped at 1,500 words and the return carries counts; re-measure | **$0.80 estimated; $2.68 measured before the length rules** |
 | `/ck:brief` | 3 to 4 | Toni market pass $0.22 + River $0.32 (12k/4k) + validator $0.02, plus $0.30 for one revision. **Measured 2026-09-09: $2.50 on the first drill before the length rule, $2.09 after it** (River 8.1k and Toni 9.8k output tokens for a 1,195-word brief; the return schema repeated the document and now carries counts only; re-measure) | **$0.55 to $0.85 estimated; $2.50 measured before the length rule** |
-| `/ck:prd` | 7 to 9 | River draft $0.60 (20k/8k) + validator $0.02 + panel $0.80 + River rewrite $0.85 (35k/10k). **Measured 2026-09-09, drill 5, two unfinished passes: $11.87**, before the 3,000-word cap and with a resume defect since fixed; re-measure | **$2.30 estimated**, plus $0.65 per revision, plus finalize (inline, session model, about $0.35) |
+| `/ck:prd` | 7 to 9 | River draft $0.60 (20k/8k) + validator $0.02 + panel $0.80 + River rewrite $0.85 (35k/10k). **Measured 2026-09-09, drill 5: $16.33 for one complete PRD from scratch** (passes 5c and 5d; $28.20 across all four passes), before the review-page renderer, the one-write rule, and medium effort on the author stages; re-measure | **$2.30 estimated**, plus $0.65 per revision, plus finalize (inline, session model, about $0.35) |
 | `/ck:architecture` | 7 to 9 | Akira draft $0.65 + validator $0.02 + panel (Morgan $0.33, Alex $0.07, Jordan $0.17, synthesis $0.25) + Akira rewrite $0.85 | **$2.40** |
 | `/ck:opportunity` | 7 to 9 | River frame $0.33 + Toni $0.22 + Akira $0.33 + domain seat $0.22 to $0.33 + Sage $0.33 + River assemble $0.85 + validator $0.02 | **$2.30 to $2.50** |
 | `/ck:market-research` | 8 to 10 | Toni plan $0.17 + 5 researchers $0.35 + cross-check $0.10 + Toni write $0.30 (25k/6k) + validator $0.02 | **$1.00 to $1.20** |
