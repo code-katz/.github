@@ -29,6 +29,7 @@ Will reviewed revision 2 of the `ck` phase-one PRD on its review page and left s
 - **Fable where judgment matters, Sonnet where volume matters.** Three persona tiers; stage tiers for research, validation, and synthesis.
 - **The document is the state, under `<project-repo>/docs/`.** The cache directory holds nothing a document depends on.
 - **The Workbench will be built** as phase three, after phase one has run on a real product.
+- **`/ck:feature` stays in phase two.** Will, 2026-09-09, after the PRD put the question to him: it consumes phase one's documents and would double the build.
 
 ### Related
 - PRD revision 3: `plans/2026-09-05-ck-plugin-prd-phase-1.md` (§3.4 for the comment-by-comment record)

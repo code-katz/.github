@@ -61,7 +61,7 @@ The proposal is a research summary with a proposed shape. This is the specificat
 
 What changed in revision 3, from Will's review (§3.4): `ck` no longer references `claude-team-cli` except to require its removal; Clare is named as the primary user and her two journeys drive the design; every path is written as `<project-repo>/...`; the Fable tier is restored for the six judgment seats; phase one grows from four commands to the full definition pipeline; the Workbench is committed as phase three; and every review happens in Claude's built-in comment system.
 
-Phase two is `/ck:feature`, `/ck:bugfix`, `/ck:gtm`, Routines, `/ck:map`, and `/ck:report`. Phase three is the Workbench. Both are in §10 with the reason for each placement, and one question for Will: whether `/ck:feature` moves into phase one.
+Phase two is `/ck:feature`, `/ck:bugfix`, `/ck:gtm`, Routines, `/ck:map`, and `/ck:report`. Phase three is the Workbench. Both are in §10 with the reason for each placement. Will confirmed on 2026-09-09 that `/ck:feature` stays in phase two.
 
 ---
 
@@ -124,7 +124,7 @@ Leading indicator: usage-log entries in the first week. A panel that always agre
 
 ### 2.5 Non-goals for phase one
 
-- No `/ck:feature`, `/ck:bugfix`, or `/ck:gtm`. They need the definition pipeline's documents as inputs and are phase two (§10.2), with `/ck:feature` open for Will to pull forward.
+- No `/ck:feature`, `/ck:bugfix`, or `/ck:gtm`. They need the definition pipeline's documents as inputs and are phase two (§10.2). Will confirmed `/ck:feature` stays there [W, 2026-09-09].
 - No UI. `/workflows` is the run view in phase one [D]. The Workbench is phase three (§10.3).
 - No hook-enforced document gates, no model fallback chain, no Advisor tool, no Routines, no mid-run arbitration (workflows cannot pause; §4.2).
 - No persona pruning. All 21 ship; the instrument ships; the cut list follows the data.
@@ -152,7 +152,7 @@ Leading indicator: usage-log entries in the first week. A panel that always agre
 | 3 | Where documents live | **The document is the state.** Every deliverable lives at a fixed, conventional, committed path under `<project-repo>` (§4.3). `.ck/runs/<run-id>/` is a cache; nothing depends on it | [W, 2026-09-08], [P] |
 | 4 | Which personas survive? | **All 21 ship; prune at 90 days on evidence.** Generation makes carrying 21 free. No usage data exists, so a cut list today is a guess. The instrument ships in phase one (§5.5). Agrees with proposal §7, contradicts §8.4 | [P] |
 | 5 | Panel model assignment | **River on Fable 5.1, Toni on Opus 5, Kai on Sonnet 5 by default.** River and Toni run on their own tiers; only Kai is moved, downward, so that three lenses are three models. Overridable per run. The memo header states the limitation: one training pipeline, partial decorrelation | [W, 2026-09-08] for the tiers; [P] for the assignment |
-| 6 | `/ck:feature` scope | **Phase two, with the question open for Will** (§10.2, §10.4). Both scope options recorded | open |
+| 6 | `/ck:feature` scope | **Phase two.** Will confirmed the placement on 2026-09-09 (§10.2). The two scope options (full end-to-end with content, or code-only) stay open until `feature.js` is designed | [W, 2026-09-09] |
 | 7 | Routines | **Phase two.** One constraint carried into phase one: every pure workflow (`panel`, `market-research`, `brief`, `team`, `roadmap`) is runnable headless. `market-research` is the first candidate for a schedule | deferred |
 | 8 | Oracle for non-code documents | **A structural validator plus the human gate.** Each contract skill carries a checklist; a neutral Haiku agent checks the draft against it inside the workflow, with at most two revise loops; the review page is the human oracle. Hook-based gates are a phase-two spike (§3.3 item 6) | [P] |
 
@@ -188,7 +188,7 @@ Revision 2 was published as a review page; Will left sixteen comments. Each is r
 | 3 | "Workflows, personas and artifacts are not consistent. She wants the same, efficient, high-fidelity process for moving features into design mockups." | J2 and `/ck:design` added; contracts made the consistency mechanism | §2.3 J2, §6.9, §7 |
 | 4 | "I would prefer a rewrite of the UI / dashboard after we complete ck." | Conductor's dashboard is rewritten as the Workbench, phase three | §3.1, §10.3 |
 | 5 | "Be precise on these paths. Use `<project-repo>/docs/brief.md`." (two comments) | `<project-repo>` defined once; every path written against it | §0.3, §4.3 |
-| 6 | "`/ck:feature`: what is this? Why is it out of scope?" | Explained in one paragraph; phase two with the question open | §10.2, §10.4 |
+| 6 | "`/ck:feature`: what is this? Why is it out of scope?" | Explained in one paragraph; phase two, confirmed by Will on 2026-09-09 | §10.2 |
 | 7 | "It will be built." (the Workbench) | "If ever" removed; phase three committed | §4.7, §10.3 |
 | 8 | "Use Claude's review/comment system in the Claude desktop UI." | §4.9 rewritten around it; `ck` builds nothing of its own for reviews | §4.9 |
 | 9 | "Why are there no Fable models? Use Fable where it matters, Sonnet where it matters." | Fable tier restored for six judgment seats; Sonnet for four execution seats; panel default follows | §3.3 item 3, §5.3, §6.10 |
@@ -1131,7 +1131,7 @@ The plugin skeleton; 21 personas as subagents and switch commands on three tiers
 
 | Item | What it is | Why not phase one | Trigger to start |
 |---|---|---|---|
-| `/ck:feature` | The build workflow. One feature from the PRD to merged code and content: plan the slices (River and Akira), a design gate on `/ck:design`'s output, parallel implementation in git worktrees (Sasha, Akira, Alex on their tiers, one slice each), cross-model verification (a lens that did not write the code reviews it), merge, and content (Toni's release note or store copy). It is the one workflow where the proposal's parallel-build research binds, and the successor to running several terminal sessions by hand | It consumes the definition pipeline's documents (PRD, architecture, design spec, brand) as inputs, so it has nothing to build from until phase one has run on a real product. Two scope options are open (proposal §8.6): full end-to-end including marketing copy, or code-only with content as a separate workflow. **Open for Will: pull it into phase one** (§10.4) | Phase one has produced a PRD, an architecture, and one design spec on a real product |
+| `/ck:feature` | The build workflow. One feature from the PRD to merged code and content: plan the slices (River and Akira), a design gate on `/ck:design`'s output, parallel implementation in git worktrees (Sasha, Akira, Alex on their tiers, one slice each), cross-model verification (a lens that did not write the code reviews it), merge, and content (Toni's release note or store copy). It is the one workflow where the proposal's parallel-build research binds, and the successor to running several terminal sessions by hand | It consumes the definition pipeline's documents (PRD, architecture, design spec, brand) as inputs, so it has nothing to build from until phase one has run on a real product. Two scope options are open (proposal §8.6): full end-to-end including marketing copy, or code-only with content as a separate workflow. Placement confirmed by Will on 2026-09-09: phase two | Phase one has produced a PRD, an architecture, and one design spec on a real product |
 | `/ck:bugfix` | Reproduce, fix in a worktree, cross-model verify, merge | Needs `/ck:feature`'s worktree and verification stages | `/ck:feature` ships |
 | `/ck:gtm` | Toni's go-to-market plan from the opportunity, market research, and brand | Phase one's Toni contributions (opportunity, market research, brief) are its inputs | Phase one |
 | Routines | Scheduled runs of headless workflows; `market-research` first (weekly, on a focus) | No headless workflow the user wants scheduled yet | `market-research` has run by hand three times |
@@ -1159,9 +1159,9 @@ Committed [W, 2026-09-08]. A rewrite that replaces the conductor dashboard, not 
 
 ### 10.4 Open questions
 
-For Will:
+For Will (answered):
 
-1. **`/ck:feature` in phase one?** This document keeps it in phase two because it consumes phase one's documents and doubles the build. Pulling it forward is a scope decision, not an engineering one: if yes, it is added as §6.13 with the worktree stages, and Phase 0 gains a spike on `isolation: 'worktree'` for persona agents.
+1. **`/ck:feature` in phase one? Answered: no.** Will confirmed on 2026-09-09 that it stays in phase two, because it consumes phase one's documents and would double the build. When its turn comes it is added as a §6 subsection with the worktree stages, and Phase 0 of that release gains a spike on `isolation: 'worktree'` for persona agents.
 2. Proposal §8.7, verbatim: "Routines integration. Which workflows, if any, should run scheduled or on GitHub events?" `market-research` is the proposed first.
 
 Harness unknowns the drill answers:
