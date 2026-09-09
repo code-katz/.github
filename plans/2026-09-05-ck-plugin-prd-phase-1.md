@@ -931,7 +931,7 @@ Checklist: every body claim carries a source number that exists in Sources; the 
 
 ### 7.3 Brief (`docs/brief.md`)
 
-Sections: Idea; Problem and root-cause chain; User; Success metric and leading indicator; Comparable products (three to five, each with what it does, price or model, and the gap, one source each, attributed to the market pass; cites `docs/market-research.md` when it exists); Scope (the smaller first version, what it leaves out, whether it would still move the number, River's recommendation, the decision marked open unless made); Non-goals; Open questions for the author. Checklist A1 to A7 in Appendix G.
+Sections: Idea; Problem and root-cause chain; User; Success metric and leading indicator; Comparable products (three to five, each with what it does, price or model, and the gap, one source each, attributed to the market pass; cites `docs/market-research.md` when it exists); Scope (the smaller first version, what it leaves out, whether it would still move the number, River's recommendation, the decision marked open unless made); Non-goals; Open questions for the author. Checklist A1 to A8 in Appendix G.
 
 ### 7.4 PRD (`docs/PRD.md`)
 
@@ -1782,8 +1782,9 @@ const market = await agent(
   (existing.length
     ? `Read these first and search only for what they lack: ${existing.join(', ')}. List what you read in readFirst.\n`
     : `There is no market research or opportunity analysis yet; readFirst is empty.\n`) +
-  `Find three to five comparable products: for each, what it does, who it is for, its price or business ` +
-  `model, the gap this idea would fill, and one source URL. Add one paragraph on how crowded the space is. ` +
+  `Find three to five comparable products: for each, in one paragraph of at most sixty words, what it does, ` +
+  `who it is for, its price or business model, the gap this idea would fill, and one source URL. Add one ` +
+  `paragraph on how crowded the space is. ` +
   `Use web search; record how many searches you ran. Write the object as JSON to ${runDir}/market.json and return it.`,
   { label: 'toni:market', phase: 'Market pass', agentType: 'ck:toni', schema: MARKET_SCHEMA },
 )
@@ -1809,7 +1810,8 @@ let brief = await agent(
   `One primary user. One success number with a target and a date, plus one leading indicator. At least two ` +
   `non-goals. Anything you would have asked the author goes under Open questions for the author, each with ` +
   `the assumption you proceeded on; the list is present even when empty.\n` +
-  `Plain words. Return the brief object; briefPath must be '${briefPath}'; comparables is the count you wrote.`,
+  `Plain words, under 1,200 words in all: this is the short document that governs the long one. ` +
+  `Return the brief object; briefPath must be '${briefPath}'; comparables is the count you wrote.`,
   { label: 'river:draft', phase: 'Draft', agentType: 'ck:river', schema: BRIEF_SCHEMA },
 )
 if (!brief) throw new Error('brief: River returned nothing')
@@ -2239,7 +2241,7 @@ Use these headings verbatim, in this order.
 2. `## Problem and root-cause chain`: the person's pain, not the solution. The chain written out (idea, why, why, why), each step more specific, ending at a root cause or at "this addresses a symptom", and saying which.
 3. `## User`: one main person, specific enough to recognize.
 4. `## Success metric and leading indicator`: one number, a target, a date; one early sign to watch.
-5. `## Comparable products`: three to five products, each with what it does, who it is for, its price or model, and the gap this idea fills; one source each; one paragraph on how crowded the space is. Attributed to the market pass. Cites `docs/market-research.md` when it exists. May be marked pending, with the reason, when the market pass did not run.
+5. `## Comparable products`: three to five products, each in one paragraph: what it does, who it is for, its price or model, and the gap this idea fills, with one source; then one paragraph on how crowded the space is. Attributed to the market pass. Cites `docs/market-research.md` when it exists. May be marked pending, with the reason, when the market pass did not run.
 6. `## Scope`: the smaller first version (what it keeps, what it leaves out, whether it would still move the number) and River's recommendation, with the decision marked open unless the author has made it.
 7. `## Non-goals`: at least two things this will not do.
 8. `## Open questions for the author`: anything River could not answer, each with the assumption used meanwhile. Present even when empty.
@@ -2253,6 +2255,7 @@ Use these headings verbatim, in this order.
 5. Comparable products has three to five entries with a source each, or is marked pending with a reason.
 6. Scope names what the smaller version leaves out and carries a recommendation.
 7. Non-goals has at least two entries.
+8. The whole brief is under 1,200 words. It is the short document that governs the long one.
 
 ## Writing
 
@@ -2374,7 +2377,7 @@ Prices per million tokens from the pricing page read 2026-09-05 [D]: Fable 5.1 $
 | Command | Agents | Arithmetic | About |
 |---|---|---|---|
 | `/ck:panel` | 4 | River $0.33 + Toni $0.17 + Kai $0.07 + synthesis $0.25 | **$0.80** |
-| `/ck:brief` | 3 to 4 | Toni market pass $0.22 + River $0.32 (12k/4k) + validator $0.02, plus $0.30 for one revision | **$0.55 to $0.85** |
+| `/ck:brief` | 3 to 4 | Toni market pass $0.22 + River $0.32 (12k/4k) + validator $0.02, plus $0.30 for one revision. **Measured 2026-09-09, first drill, before the length rule: $2.50**, with River and Toni each writing about 11k output tokens; the 1,200-word rule in the contract is the correction | **$0.55 to $0.85 estimated; $2.50 measured before the length rule** |
 | `/ck:prd` | 7 to 9 | River draft $0.60 (20k/8k) + validator $0.02 + panel $0.80 + River rewrite $0.85 (35k/10k) | **$2.30**, plus $0.65 per revision, plus finalize (inline, session model, about $0.35) |
 | `/ck:architecture` | 7 to 9 | Akira draft $0.65 + validator $0.02 + panel (Morgan $0.33, Alex $0.07, Jordan $0.17, synthesis $0.25) + Akira rewrite $0.85 | **$2.40** |
 | `/ck:opportunity` | 7 to 9 | River frame $0.33 + Toni $0.22 + Akira $0.33 + domain seat $0.22 to $0.33 + Sage $0.33 + River assemble $0.85 + validator $0.02 | **$2.30 to $2.50** |
