@@ -267,7 +267,7 @@ The cache lives at `<project-repo>/.ck/runs/<run-id>/` and holds what a fresh se
 
 ```
 .ck/runs/<run-id>/
-├── run.json              { runId, command, createdAt, status, stage, outputPath, lenses, harnessRunId, scriptPath }
+├── run.json              { runId, command, createdAt, status, stage, outputPath, lenses, harnessRunId, workflow }
 ├── panel/<persona>.json  one file per lens
 ├── sections/<persona>.md one file per contributor, for the assembled documents
 └── review.md             the comments and how each was applied
@@ -368,7 +368,7 @@ Rules:
 2. When the reviewer says "done", Claude reads every thread, applies each change to the file on disk (the document is the state, §4.3), republishes, and resolves each thread with one line saying what changed. A comment Claude will not act on gets a reply with the reason and stays open. A thread not sent to Claude is applied and reported in chat, because it cannot be replied to or resolved.
 3. Document pages render the document with a sticky table of contents, so a comment can point at a section.
 4. Gallery pages show labeled variants (A, B, C) side by side, each with its rationale and trade-off, each commentable; the reviewer comments to pick one or ask for changes. Brand galleries and design galleries use one page shape (§7.8, §7.9).
-5. Availability of the publishing tool inside local Claude Code is Phase 0 spike S5 (§8.0). Every gate keeps a file-edit path that works without it: "Edit the file and run the command again; I'll pick up from your edits."
+5. Availability, from the docs (Phase 0, S5): the Claude Code CLI 2.1.183 or later or the desktop app, signed in with `/login`, on a paid plan; reading comments needs 2.1.221 or later; replying on its own needs 2.1.228 or later; and comments are taken only on an artifact shared within a Team or Enterprise organization, so an account on a Pro or Max plan reviews by file edit. Every gate keeps that file-edit path: "Edit the file and run the command again; I'll pick up from your edits."
 
 Phase one uses this at every gate in §4.2's table, and for the PRD you are reading.
 
@@ -500,7 +500,7 @@ The interactive versions of River's three behaviors live in `skills/prd/SKILL.md
 }
 ```
 
-`scripts/usage-log.sh` reads the hook's stdin JSON, appends one line `{"ts":"<UTC>","agent_type":"ck:<name>","session_id":"<id>","cwd":"<path>"}` to `${CLAUDE_PLUGIN_DATA}/usage.jsonl`, and always exits 0. Facts it relies on: `SubagentStart` matchers accept plugin-scoped names such as `^my-plugin:reviewer$`; stdin carries `agent_type` and `session_id`; `CLAUDE_PLUGIN_DATA` is exported to hook processes and survives plugin updates [D]. It never blocks: a logging failure must not stop a persona. The 90-day review reads this file and answers proposal §8.4.
+`scripts/usage-log.sh` reads the hook's stdin JSON, appends one line `{"ts":"<UTC>","agent_type":"ck:<name>","session_id":"<id>","cwd":"<path>"}` to `${CLAUDE_PLUGIN_DATA}/usage.jsonl`, and always exits 0. Facts it relies on: `SubagentStart` matchers accept plugin-scoped names such as `^my-plugin:reviewer$`; stdin carries `agent_type` and `session_id`; `CLAUDE_PLUGIN_DATA` is exported to hook processes and survives plugin updates [D]. It never blocks: a logging failure must not stop a persona. The 90-day review reads this file and answers proposal §8.4. Observed in Phase 0 (S4): the hook fires for persona agents inside a workflow as well as for direct delegation; stdin carries `agent_type`, `agent_id`, `session_id`, `cwd`, and `transcript_path`; with `--plugin-dir` the data directory resolves to `~/.claude/plugins/data/ck-inline`.
 
 `scripts/check-prereqs.sh` looks for `~/.claude/team/`, `~/.local/bin/claude-team`, and the old tool's block in `~/.claude/CLAUDE.md`. If any is present it prints one plain sentence ("The old team tool is still installed and its persona commands will collide with ck's. Remove it with the steps in the ck README.") and exits 0. It never blocks a session.
 
@@ -689,12 +689,12 @@ Up to eleven agents; under the "medium" guideline. The Confirm fan-out is where 
 |---|---|---|---|
 | Draft | 1, `ck:river` | Reads `docs/brief.md`, the optional inputs, and the PRD contract. Writes `docs/PRD.md` to the contract's section order. Tags every claim not taken from the brief `[C1]`, `[C2]`, ... so the lenses can address it. Root-cause chain and V0 counter-proposal in subagent form. No premortem yet | `docs/PRD.md` |
 | Validate | 1 neutral, Haiku 4.5, `effort: 'low'`; then `ck:river` to revise, at most twice | Checks the draft against the contract checklist; returns `{valid, missing[], notes}`. On `missing`, River revises in place, keeping every tag. After two revisions the workflow proceeds and logs what is still missing | `docs/PRD.md` |
-| Panel | 4, nested `workflow({scriptPath: pluginRoot + '/workflows/panel.js'})` | Question: "Is this PRD ready for the author's review, and what would you change before it ships?" Material: `docs/PRD.md`. Rationale, read second: `docs/brief.md`. Evidence per lens as above | `panel/*.json`, `docs/decisions/<timestamp>-prd-review.md` |
+| Panel | 4, nested `workflow('ck:panel', ...)` (by name; Phase 0 showed a script path outside the working directory is refused) | Question: "Is this PRD ready for the author's review, and what would you change before it ships?" Material: `docs/PRD.md`. Rationale, read second: `docs/brief.md`. Evidence per lens as above | `panel/*.json`, `docs/decisions/<timestamp>-prd-review.md` |
 | Synthesize | 1, `ck:river` | Rewrites `docs/PRD.md`: revised where the panel showed a claim wrong or unsupported; **Appendix A, Challenged claims** (claim, challenged by, severity, status ∈ upheld, revised, withdrawn, open; resolution; the memo's disagreements and kill conditions reproduced verbatim; nothing deleted); **Appendix B, Premortem** (the scenario, the exposed assumption, the question "What went wrong?" left verbatim for the review) | `docs/PRD.md` |
 
 Seven agents without a revision, up to nine with two. If the nested panel throws, the workflow logs it and synthesizes without it, saying so in the PRD header.
 
-**Launch and wait.** The skill calls the Workflow tool with `scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/draft.js"` and the args in Appendix E, writes the returned run id into `run.json` as `harnessRunId`, tells the user in plain words that the draft is running in the background, and **stops: it waits for the task notification. It does not poll, does not narrate, and does not start other work on this run.** On a stop or failure it prints the §4.8 message naming `docs/PRD.md` and the one action, and records the failed stage in `run.json` so the next run passes the right `startAt`. `${CLAUDE_PLUGIN_ROOT}` expands anywhere in skill content [D].
+**Launch and wait.** The skill calls the Workflow tool with `name: "ck:draft"` and the args in Appendix E (a plugin workflow is addressed by name; Phase 0, open question 3), writes the returned run id into `run.json` as `harnessRunId`, tells the user in plain words that the draft is running in the background, and **stops: it waits for the task notification. It does not poll, does not narrate, and does not start other work on this run.** On a stop or failure it prints the §4.8 message naming `docs/PRD.md` and the one action, and records the failed stage in `run.json` so the next run passes the right `startAt`. `${CLAUDE_PLUGIN_ROOT}` expands anywhere in skill content [D].
 
 **The document.** `docs/PRD.md`, contract §7.4 (full text: Appendix G).
 
@@ -985,18 +985,18 @@ The ten sections in §6.11, in order. Checklist: the header names every lens, it
 
 ### 8.0 Phase 0: spikes before the build
 
-Each is a one-session experiment with a yes-or-no answer recorded in `tests/drill/`.
+Each is a one-session experiment with a yes-or-no answer recorded in `tests/drill/`. The first pass ran on 2026-09-09 in the cloud session, with a throwaway plugin loaded through `--plugin-dir` into a nested Claude Code; the record, the plugin, and the two remaining local checks are in [`plans/2026-09-09-ck-phase-0-spikes.md`](2026-09-09-ck-phase-0-spikes.md).
 
 | # | Spike | Why it gates the build | Answer today |
 |---|---|---|---|
 | S1 | Install from the marketplace on a second machine (Clare's); `/ck:next` runs | Distribution is the whole point | Open |
-| S2 | Inside a workflow, `agentType: 'ck:river'` runs on the model in its frontmatter, and `model:` on the call overrides it | The tier table and the panel's decorrelation both depend on it | Open; the docs say yes [D] |
-| S3 | A nested `workflow({scriptPath})` consent: separate prompt or covered by "don't ask again" | Friction on every `/ck:prd` and `/ck:architecture` run | Open |
-| S4 | The `SubagentStart` hook's stdin carries `agent_type` and `session_id`, and `CLAUDE_PLUGIN_DATA` is writable | The usage log, so G7 | Open; the docs say yes [D] |
-| S5 | The publishing tool for review pages is available in local Claude Code (desktop app and CLI), and a skill can read the page's comments there | Every gate in §4.2 | Open |
+| S2 | Inside a workflow, `agentType: 'ck:river'` runs on the model in its frontmatter, and `model:` on the call overrides it | The tier table and the panel's decorrelation both depend on it | **Yes** (2026-09-09): River ran on Haiku from its frontmatter, Toni on Opus 5 from the override, the neutral agent on the session model; per-agent transcripts in the drill log |
+| S3 | A nested workflow: does it run, and is its consent a separate prompt or covered by "don't ask again" | Friction on every `/ck:prd` and `/ck:architecture` run | **Half answered** (2026-09-09): nesting works by name, `workflow('ck:panel', args)`; nesting by script path is refused when the plugin is outside the working directory. The consent prompt is not observable in a non-interactive run; Will runs the local check in the drill log |
+| S4 | The `SubagentStart` hook's stdin carries `agent_type` and `session_id`, and `CLAUDE_PLUGIN_DATA` is writable | The usage log, so G7 | **Yes** (2026-09-09): both fields present, plus `agent_id` and `cwd`; `usage.jsonl` written under the plugin data directory; fires inside workflows too |
+| S5 | The publishing tool for review pages is available in local Claude Code (desktop app and CLI), and a skill can read the page's comments there | Every gate in §4.2 | **Yes with conditions** (2026-09-09, from the docs): CLI 2.1.183 or later or the desktop app, signed in, paid plan; comments need 2.1.221 or later and a Team or Enterprise organization. Clare's plan and version are the local check |
 | S6 | Can `PreModelSwitch` interrupt a workflow to arbitrate a model change | The Opus PRD's escalation design | **Answered: no.** Workflows accept no mid-run input and the hook fires on a requested session switch only [D] |
-| S7 | Web search is available to a subagent running inside a workflow, with `agentType` set and without | `market-research`, the brief's market pass, and the opportunity's sourced sections | Open |
-| S8 | On Clare's machine, how many agents run concurrently (min(16, CPUs minus 2) [D]); does an eleven-agent `team` run finish in one sitting | Sizing of every fan-out | Open |
+| S7 | Web search is available to a subagent running inside a workflow, with `agentType` set and without | `market-research`, the brief's market pass, and the opportunity's sourced sections | **Yes** (2026-09-09): the neutral agent ran one `WebSearch` inside the nested workflow and returned a URL; the persona agents had the tool available. Re-check on Clare's network |
+| S8 | On Clare's machine, how many agents run concurrently (min(16, CPUs minus 2) [D]); does an eleven-agent `team` run finish in one sitting | Sizing of every fan-out | Open for Clare's machine. The cloud spike machine has 4 CPUs, so 2 agents at a time; the three-agent spike finished in 7 seconds of wall time |
 
 ### 8.1 Repository and layout
 
@@ -1083,7 +1083,7 @@ Install: `/plugin marketplace add code-katz/claude-plugins` then `/plugin instal
 | A paid Claude Code plan with dynamic workflows available; on Pro, enabled in `/config` | Workflows are the orchestrator | [D] |
 | Workflows not disabled by the organization (`disableWorkflows`) | Same | [D] |
 | Web search available to subagents | `market-research`, the brief's market pass, the opportunity's sourced sections | Spike S7 |
-| The publishing tool for review pages | Every gate; the file-edit path always works | Spike S5 |
+| Review pages: Claude Code CLI 2.1.183 or later or the desktop app, signed in, on a paid plan; comments need 2.1.221 or later and a Team or Enterprise organization | Every gate; the file-edit path always works | [D], S5 |
 | Node 20+ on the developer's machine, for the script check in the tests only | The plugin itself needs no Node at run time | [P] |
 | `jq` optional, for the usage log; the script falls back to appending the raw line | Family convention: jq is optional | [R] |
 
@@ -1166,12 +1166,12 @@ For Will (answered):
 
 Harness unknowns the drill answers:
 
-3. Does the Workflow tool's `name` parameter accept `ck:draft` for a plugin workflow? `scriptPath` is the specified path; the drill tries `name` and records the answer.
-4. Does a nested `workflow({scriptPath})` prompt for consent separately on first run, and does "don't ask again for `ck:panel`" cover the nested call? (S3)
-5. Does the workflow loader accept the extra `personas` key in `meta`? The docs require `name` and `description` and describe `whenToUse` and `phases`; an extra literal key is expected to pass. Test 9 asserts it; the drill confirms `/ck:panel` still appears in autocomplete.
+3. **Answered yes** (2026-09-09): the Workflow tool ran `name: "ck:draft-spike"` on the first attempt. `name` is the specified form; a `scriptPath` outside the working directory is refused.
+4. Nested workflows run by name, `workflow('ck:panel', args)` (answered 2026-09-09). Whether the nested call prompts for consent separately on first run, and whether "don't ask again for `ck:panel`" covers it, is Will's local check (S3).
+5. **Answered yes** (2026-09-09): both spike workflows carried `personas` in `meta`, loaded, and ran by name.
 6. Does `SubagentStop` exit 2 feed stderr back to a workflow agent? Decides the hook-gate item in §10.2.
-7. Is the publishing tool for review pages available in local Claude Code, and can a skill read its comments there? (S5) The file-edit path covers phase one either way.
-8. Is web search available to subagents inside a workflow? (S7) Without it, `market-research` and the market passes run on what is in the repository and say so.
+7. **Answered from the docs** (2026-09-09, S5): yes in the CLI and the desktop app, with the plan and version conditions in §4.9. The file-edit path covers phase one either way.
+8. **Answered yes** (2026-09-09, S7) in the cloud environment; re-checked on Clare's machine in the local pass. Without it, `market-research` and the market passes run on what is in the repository and say so.
 
 ---
 
@@ -1180,8 +1180,8 @@ Harness unknowns the drill answers:
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
 | Workflows unavailable (plan, `/config`, or org `disableWorkflows`) | Low for Will and Clare; real for other users | The plugin is inert | README states the prerequisite; every skill checks for the Workflow tool before anything else and stops with a plain reason |
-| Web search unavailable to subagents inside a workflow (S7) | Unknown | Market research and market passes run without sources | The document says so in its header; the Sources section lists what was read instead; Phase 0 answers it before the build |
-| The publishing tool is unavailable locally (S5) | Unknown | No review pages; every gate falls back to file edits | The fallback is specified at every gate; Clare already reviews by editing files today |
+| Web search unavailable to subagents inside a workflow (S7) | Low: answered yes in the cloud spike | Market research and market passes run without sources | The document says so in its header; the Sources section lists what was read instead; re-checked on Clare's machine |
+| Comments unavailable on Clare's account (S5: comments need Claude Code 2.1.221 or later and a Team or Enterprise organization) | Depends on her plan | No comment review; every gate falls back to file edits | Check her plan and version before the build; the file-edit fallback is specified at every gate, and she already reviews by editing files today |
 | An API error nulls a lens | Medium | Memo on two lenses | Logged; memo header says so; re-run offered; a lens can be re-modelled per run |
 | Fable on the judgment seats dominates cost | Certain | River's stages are the largest line in every pipeline run (Appendix I) | It is the decision Will made (§3.3 item 3); the cost is stated per command; a tier is one line in `tiers.conf` |
 | Persona text drifts between `profiles/` and the generated files | Low | A switch command and a subagent disagree | Test 2; the generator refuses a dirty tree |
@@ -1191,7 +1191,7 @@ Harness unknowns the drill answers:
 | Galleries exceed the 16 MB page limit | Low for SVG; real if raster assets creep in | A gallery cannot be published | The gallery contract forbids external and raster assets; the validator checks size |
 | Consistency erodes as commands accrete | Medium | Clare's failure mode returns | Every document has a contract and a validator; test 15 compares heading lists across projects; every new command needs a contract before a script |
 | Consent prompts on every run annoy | Medium | Friction | "Don't ask again for `ck:<name>`" on the first run of each plugin workflow; allow rules `Workflow(ck:panel)`, `Workflow(ck:draft)`, and so on |
-| `meta.personas` rejected by the loader | Low | Workflow missing from autocomplete | Open question 5; fallback is to move the roster into `description` |
+| A nested workflow prompts for consent on every `/ck:prd` run (S3, local check pending) | Unknown | Two prompts per run instead of one | "Don't ask again for `ck:panel`" on first use; allow rule `Workflow(ck:panel)` in the README |
 | Fan-outs too large for Clare's machine (S8) | Unknown | `team` and `market-research` run in several rounds and take longer | Concurrency is min(16, CPUs minus 2) [D]; both scripts cap their fan-out and the closing message states the elapsed time |
 
 ---
@@ -1621,13 +1621,13 @@ if (runs('validate')) {
   }
 }
 
-// ---- Panel (nested; one level only; each lens reads its own evidence and sees the rationale last) ----
+// ---- Panel (nested by name; one level only; each lens reads its own evidence and sees the rationale last) ----
 let panel = null
 if (runs('panel')) {
   phase('Panel')
   const lenses = Array.isArray(args.lenses) && args.lenses.length ? args.lenses : A.lenses
   try {
-    panel = await workflow({ scriptPath: args.pluginRoot + '/workflows/panel.js' }, {
+    panel = await workflow('ck:panel', {
       runId: args.runId,
       runDir,
       projectRoot,
@@ -2143,7 +2143,7 @@ List which of these exist and pass them as `inputs`, absolute: `docs/brief.md` (
 
 ```
 Workflow({
-  scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/draft.js",
+  name: "ck:draft",
   args: {
     artifact: "prd",
     runId: "<runId>", runDir: "<runDir>", projectRoot: "<projectRoot>",
@@ -2156,7 +2156,7 @@ Workflow({
 })
 ```
 
-Immediately write the returned run id into `run.json` as `harnessRunId`, with `scriptPath`, and set `status` to `drafting`. Say: "Writing the PRD. This takes a few minutes and runs in the background; I'll tell you when it's ready." Then stop. Wait for the task notification. Do not poll, do not narrate, do not start other work on this run.
+Immediately write the returned run id into `run.json` as `harnessRunId`, with `workflow: "ck:draft"`, and set `status` to `drafting`. Say: "Writing the PRD. This takes a few minutes and runs in the background; I'll tell you when it's ready." Then stop. Wait for the task notification. Do not poll, do not narrate, do not start other work on this run.
 
 If the notification reports a stop or a failure: record the failed stage in `run.json` and say: "I couldn't finish the [stage] step. Everything up to it is saved in `docs/PRD.md`. Run `/ck:prd` again to continue from there." Within the same session you may instead offer to relaunch with `resumeFromRunId`.
 
@@ -2168,7 +2168,7 @@ Set `status` to `review`. Read `docs/PRD.md`. Review it per `${CLAUDE_PLUGIN_ROO
 
 The question at the top of the review, and the first thing to ask if the author is reviewing in conversation: "Imagine this shipped on time and did not move the number. What went wrong?" Use the answer to surface the hidden assumption; do not argue with it. Record it in `<runDir>/review.md`.
 
-To re-run the reviewers on named sections, call `Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/panel.js", args: { runId, runDir, projectRoot, pluginRoot: "${CLAUDE_PLUGIN_ROOT}", timestamp: "<new>", question: "<the focused question>", contextPath: "<projectRoot>/docs/PRD.md", rationalePath: "<projectRoot>/docs/brief.md", lenses } })`, record its run id, wait, and return to this step.
+To re-run the reviewers on named sections, call `Workflow({ name: "ck:panel", args: { runId, runDir, projectRoot, pluginRoot: "${CLAUDE_PLUGIN_ROOT}", timestamp: "<new>", question: "<the focused question>", contextPath: "<projectRoot>/docs/PRD.md", rationalePath: "<projectRoot>/docs/brief.md", lenses } })`, record its run id, wait, and return to this step.
 
 ## 7. Finalize
 

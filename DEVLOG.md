@@ -5,6 +5,33 @@ Auto-maintained via [claude-devlog-skill](https://github.com/code-katz/claude-de
 
 ---
 
+## [2026-09-09] `ck` Phase 0: six of eight spikes answered in one cloud session; the nested panel must be called by name
+
+**Category:** `milestone`
+**Tags:** `ck`, `phase-0`, `spikes`, `workflows`, `hooks`, `review-pages`
+**Risk Level:** `low`
+**Breaking Change:** `no`
+
+### Summary
+A throwaway `ck` plugin (two persona agents, two skills, two workflows, two hooks) was loaded into a nested Claude Code with `--plugin-dir` and driven non-interactively. Six of the eight Phase 0 spikes have answers; two need Will's or Clare's machine. Record: `plans/2026-09-09-ck-phase-0-spikes.md`.
+
+### Detail
+
+- **Answered yes:** `/ck:next` registers and `${CLAUDE_PLUGIN_ROOT}` expands (S1, this machine); a persona agent inside a workflow runs on its frontmatter model and a per-call `model` overrides it (S2); the `SubagentStart` hook fires for direct delegation and inside workflows, with `agent_type`, `agent_id`, `session_id`, `cwd` on stdin, and writes under `CLAUDE_PLUGIN_DATA` (S4); a neutral agent inside a nested workflow ran a real web search (S7); the extra `personas` key in `meta` loads; a plugin workflow is addressed by `name: "ck:<workflow>"`.
+- **One design change:** a nested workflow must be called by name, `workflow('ck:panel', args)`. Calling it by script path is refused when the plugin lives outside the working directory. The PRD's `draft.js`, `/ck:prd` skill, and §6.6 are updated.
+- **From the docs (S5):** review pages work in the CLI (2.1.183 or later) and the desktop app on any paid plan; comments need 2.1.221 or later and a Team or Enterprise organization. Clare's plan is the check.
+- **Still local:** the interactive consent prompt for a nested workflow (S3), a marketplace install on a second machine (S1), and Clare's CPU count (S8).
+
+### Decisions Made
+- **Nest by name, launch by name.** `workflow('ck:panel', args)` and `Workflow({ name: "ck:draft" })`; script paths are for development only.
+- **Check Clare's plan before the build.** Comments on review pages are gated by plan; the file-edit fallback stays specified at every gate.
+
+### Related
+- Drill log and the spike plugin: `plans/2026-09-09-ck-phase-0-spikes.md`, `plans/phase-0/ck-spike/`
+- PRD §8.0, §10.4, Appendix B and E updated: `plans/2026-09-05-ck-plugin-prd-phase-1.md`
+
+---
+
 ## [2026-09-09] `ck` PRD revision 3 after Will's review: `ck` independent, the full definition pipeline in phase one, Fable tier restored, Workbench committed as phase three
 
 **Category:** `decision`
