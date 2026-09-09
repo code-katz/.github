@@ -278,11 +278,12 @@ Rules, each of which closes a failure mode found in review:
 | Rule | Failure it closes |
 |---|---|
 | `run-id` is `<UTC timestamp>-<slug>`, minted by the skill with `date -u`; workflows receive `timestamp` in `args` because `Date.now()` throws in scripts [D] | Non-deterministic scripts break resume |
-| `projectRoot` and `runDir` are passed **absolute** in `args` | Subagents inherit the session cwd; a user in a subdirectory would write `docs/` in the wrong place |
+| A skill passes `projectRoot` and `runDir` **absolute** in `args`; a direct slash invocation gets the typed text as a string, and the script defaults both to the session's directory | Subagents inherit the session cwd; a skill run from a subdirectory would otherwise write `docs/` in the wrong place, and a direct run must work with nothing but the text (Phase 0, 2026-09-09) |
 | Every workflow accepts `args.startAt` and skips completed stages; the skill decides `startAt` by which documents exist | A fresh session cannot replay the harness cache [D]; the file on disk is what survives |
 | The skill writes the Workflow tool's own run id into `run.json` as `harnessRunId` before it waits | Within a session, `resumeFromRunId` replays completed agents at no cost [D] |
 | The skill adds `.ck/` to `<project-repo>/.git/info/exclude` on first use, never to `.gitignore` | The cache must not appear in the product's history, and the plugin must not edit a tracked file the author did not ask it to |
 | Every agent that writes returns the path it wrote, in its schema | The script cannot check the filesystem; the next stage needs the path |
+| Scripts never depend on `${CLAUDE_PLUGIN_ROOT}`: contracts and the roster are skills (`ck:<name>-artifact`, `ck:roster`) that an agent loads by name when no `pluginRoot` was passed | The variable expands in skill and agent text, not inside workflow scripts (Phase 0, 2026-09-09) |
 
 ### 4.4 Naming
 
@@ -386,7 +387,7 @@ Two files are generated from every profile, and one index from all of them:
 |---|---|---|
 | `agents/<name>.md` | The persona as a subagent, on its tier, with interactive behaviors rewritten for output (§5.2, §5.4) | `ck:<name>` |
 | `skills/<name>/SKILL.md` | The persona as a session switch: the profile with its interactive behaviors intact, because a session has a user (§5.6) | `/ck:<name>` |
-| `profiles/ROSTER.md` | One line per persona: name, role, tier, one-sentence domain. Read by `/ck:team` and `/ck:opportunity` when choosing a cast | none |
+| `profiles/ROSTER.md` and `skills/roster/SKILL.md` | One line per persona: name, role, tier, one-sentence domain. Read by `/ck:team` and `/ck:opportunity` when choosing a cast; the skill form is what a workflow agent loads when it has no plugin path | `ck:roster` (not for typing) |
 
 `scripts/generate.sh` produces all three; CI fails on drift between `profiles/` and the generated files (§9). The two coordinator profiles are not imported: their routing behavior becomes `/ck:team` (§6.5) and `/ck:next` (§6.12), and their session greeting has no equivalent in a plugin.
 
@@ -844,7 +845,7 @@ Three agents per stage; one gate.
 /ck:panel <question> --lenses river:claude-fable-5-1,morgan:claude-opus-5,sasha:claude-sonnet-5
 ```
 
-Claude passes the invocation as `args` [D]: `runId`, `runDir`, `projectRoot`, `pluginRoot`, `timestamp`, `question` (required; the script throws without them), `contextPath`, `rationalePath`, `memoPath`, `lenses` (optional). Because a workflow is a slash command with no skill in front of it, the main session mints `runId` and `timestamp` with `date -u` and passes absolute paths; the workflow's `description` carries those instructions so a direct invocation still works.
+Claude passes the invocation as `args` [D]: for a direct `/ck:panel <question>`, the typed text itself, as a string: the harness passes a slash command's text to the script unchanged, with no chance for the session to compose arguments first (Phase 0, 2026-09-09, observed on Will's machine and reproduced). Every pure workflow therefore accepts a string and defaults the rest: the project root is the session's directory, the cache is `.ck/runs/<workflow>-latest`, the timestamp is written by the agent from `date -u`, and the contract and roster are loaded by skill name (`ck:memo-artifact`, `ck:roster`) because `${CLAUDE_PLUGIN_ROOT}` does not expand inside a script. A skill launch passes the full object instead: `runId`, `runDir`, `projectRoot`, `pluginRoot`, `timestamp`, `question`, `contextPath`, `rationalePath`, `memoPath`, `lenses`.
 
 **Lenses, models, and evidence.**
 
@@ -1020,6 +1021,7 @@ ck/
 │   ├── design/SKILL.md           /ck:design (one gate)
 │   ├── next/SKILL.md             /ck:next (Appendix F)
 │   ├── review-page/SKILL.md      how every gate publishes, waits, applies, republishes, resolves (§4.9)
+│   ├── roster/SKILL.md           generated; the roster a workflow agent loads by name
 │   └── <10 contracts>-artifact/SKILL.md   (§7; brief and PRD in Appendix G)
 ├── workflows/
 │   ├── panel.js                  Appendix A
@@ -1201,7 +1203,7 @@ Harness unknowns the drill answers:
 ```js
 export const meta = {
   name: 'panel',
-  description: 'Three-lens decision panel: product (river, Fable 5.1), marketing (toni, Opus 5), and UX (kai, Sonnet 5) personas, each on a different model and each reading its own evidence, argue one question; a neutral memo surfaces where they disagree and leaves the decision to the author. Args: runId, runDir (absolute cache directory), projectRoot (absolute path of the project repository), pluginRoot, timestamp (UTC, minted by the caller with date -u), question, contextPath (optional), rationalePath (optional; each lens reads it only after forming its view), memoPath (optional; default <projectRoot>/docs/decisions/<timestamp>-panel.md), lenses (optional [{persona, lens, model, reads}]).',
+  description: 'Three-lens decision panel: product (river, Fable 5.1), marketing (toni, Opus 5), and UX (kai, Sonnet 5) personas, each on a different model and each reading its own evidence, argue one question; a neutral memo surfaces where they disagree and leaves the decision to the author. Type /ck:panel followed by the question; the text is the only argument needed. A skill may instead pass an object: runId, runDir (absolute cache directory), projectRoot (absolute path of the project repository), pluginRoot, timestamp (UTC, minted by the caller with date -u), question, contextPath (optional), rationalePath (optional; each lens reads it only after forming its view), memoPath (optional; default <projectRoot>/docs/decisions/<timestamp>-panel.md), lenses (optional [{persona, lens, model, reads}]).',
   phases: [
     { title: 'Lenses', detail: 'ck:river, ck:toni, ck:kai in parallel, one model each, each reading its own evidence, each forced to argue against itself' },
     { title: 'Synthesis', detail: 'one neutral agent writes the decision memo: agreement flagged as low-information, disagreement preserved, decision left to the author' },
@@ -1209,16 +1211,26 @@ export const meta = {
   personas: ['river', 'toni', 'kai'],
 }
 
-if (!args || !args.runId || !args.runDir || !args.projectRoot || !args.pluginRoot || !args.timestamp || !args.question) {
-  throw new Error('panel: args.runId, args.runDir, args.projectRoot, args.pluginRoot, args.timestamp, and args.question are required')
+// Direct invocation (/ck:panel <question>) hands the typed text to the script as a string; a skill
+// launch passes an object. Both are accepted. Paths default to the project the session is in, and
+// without a plugin root the memo contract is loaded by skill name instead of by path.
+const a = (args && typeof args === 'object') ? args : { question: typeof args === 'string' ? args.trim() : '' }
+if (!a.question) {
+  throw new Error('panel: type the question after the command, for example /ck:panel Should the first release include the brand guide step?')
 }
-const runDir = args.runDir
-const projectRoot = args.projectRoot
-const stamp = args.timestamp
-const question = args.question
-const contextPath = args.contextPath || null
-const rationalePath = args.rationalePath || null
-const memoPath = args.memoPath || (projectRoot + '/docs/decisions/' + stamp + '-panel.md')
+const question = a.question
+const projectRoot = a.projectRoot || '.'
+const runDir = a.runDir || (projectRoot + '/.ck/runs/panel-latest')
+const runId = a.runId || 'panel-direct'
+const stamp = a.timestamp || 'today (write the date from `date -u`)'
+const slug = question.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'panel'
+const contextPath = a.contextPath || null
+const rationalePath = a.rationalePath || null
+const memoPath = a.memoPath || (projectRoot + '/docs/decisions/' + (a.timestamp ? a.timestamp + '-' : '') + slug + '.md')
+const memoContract = a.pluginRoot
+  ? 'Read ' + a.pluginRoot + '/skills/memo-artifact/SKILL.md (the memo contract).'
+  : 'Load the skill ck:memo-artifact with the Skill tool (the memo contract).'
+const housekeeping = a.runDir ? '' : 'If ' + projectRoot + '/.git exists, make sure the line ".ck/" is in ' + projectRoot + '/.git/info/exclude (append it if missing). '
 
 // Three lenses, three models, three bodies of evidence. The same model in three
 // costumes is one opinion; the same evidence read three times is one reading.
@@ -1230,8 +1242,8 @@ const DEFAULT_LENSES = [
   { persona: 'toni', lens: 'marketing', model: 'claude-opus-5', reads: ['docs/market-research.md', 'docs/opportunity.md'] },
   { persona: 'kai', lens: 'ux', model: 'claude-sonnet-5', reads: ['brand/', 'docs/design/'] },
 ]
-const lenses = Array.isArray(args.lenses) && args.lenses.length
-  ? args.lenses.map((l, i) => {
+const lenses = Array.isArray(a.lenses) && a.lenses.length
+  ? a.lenses.map((l, i) => {
       if (!l || !l.persona) throw new Error('panel: every entry in args.lenses needs a persona')
       const d = DEFAULT_LENSES[i % DEFAULT_LENSES.length]
       return { persona: l.persona, lens: l.lens || l.persona, model: l.model || d.model, reads: Array.isArray(l.reads) ? l.reads : [] }
@@ -1345,7 +1357,7 @@ phase('Lenses')
 const roster = lenses.map(l => `${l.persona}: ${l.lens}`).join('; ')
 const results = (await parallel(lenses.map(l => () => agent(
   `You are ${l.persona}, the ${l.lens} lens on a ${lenses.length}-lens decision panel (${roster}).\n` +
-  `The project repository is ${projectRoot}; relative paths below are relative to it.\n` +
+  `The project repository is ${projectRoot}; relative paths below are relative to it. ` + housekeeping + `\n` +
   `The question: ${question}\n` +
   `Work in two passes and keep them separate.\n` +
   `Pass 1. Read ` + (contextPath ? `${contextPath} (the material the question is about) and ` : '') +
@@ -1380,7 +1392,7 @@ if (missing.length) {
 phase('Synthesis')
 const modelOf = persona => (lenses.find(l => l.persona === persona) || {}).model || 'unknown'
 const memo = await agent(
-  `Write the decision memo for a ${lenses.length}-lens panel. Question: ${question}. Run ${args.runId}, generated ${stamp}.\n` +
+  `Write the decision memo for a ${lenses.length}-lens panel. Question: ${question}. Run ${runId}, generated ${stamp}.\n` +
   `Lens results, also on disk under ${runDir}/panel/:\n` +
   JSON.stringify(results.map(r => ({ ...r, model: modelOf(r.persona) })), null, 1) + '\n' +
   (missing.length ? `Lenses that returned nothing: ${missing.join(', ')}. Say so in the memo header.\n` : '') +
@@ -1393,7 +1405,7 @@ const memo = await agent(
   `panelFailedToDisagree to true and say in the header that the panel should be re-run with a different ` +
   `question or lens set. State in the header that all lenses are Claude models from one training pipeline, so ` +
   `decorrelation is partial, and list what each lens actually read.\n` +
-  `Write ${memoPath} (create the directory if needed) to ${args.pluginRoot}/skills/memo-artifact/SKILL.md: ` +
+  `${memoContract} Write ${memoPath} (create the directory if needed) with these sections: ` +
   `1 Question and context (run id, timestamp, lens table with models and evidence read, the limitation, any ` +
   `missing lens); 2 Recommendations (table: lens | persona | model | recommendation | one-line position); ` +
   `3 Agreement, flagged as low-information, with why; 4 Disagreement (every point where two lenses conflict, ` +
@@ -1410,7 +1422,7 @@ if (!memo) {
   const recs = results.map(r => r.recommendation)
   const top = recs.sort((a, b) => recs.filter(x => x === b).length - recs.filter(x => x === a).length)[0]
   return {
-    runId: args.runId, question, memoPath: null, lenses: lenses.map(l => l.persona), missing,
+    runId, question, memoPath: null, lenses: lenses.map(l => l.persona), missing,
     recommendations: results.map(r => ({ persona: r.persona, lens: r.lens, model: modelOf(r.persona), recommendation: r.recommendation })),
     agreementRate: recs.filter(x => x === top).length / recs.length,
     agreement: '', agreementIsLowInformationBecause: 'no-agreement', disagreements: [],
@@ -1421,7 +1433,7 @@ if (!memo) {
 }
 if (memo.panelFailedToDisagree) log('panel: the panel failed to disagree; re-run with a different question or lens set')
 log(`panel: agreement rate ${memo.agreementRate}; ${memo.disagreements.length} disagreement(s); ${memo.killConditions.filter(k => k.met === 'yes').length} kill condition(s) already met`)
-return { runId: args.runId, ...memo, lenses: lenses.map(l => l.persona), missing }
+return { runId, ...memo, lenses: lenses.map(l => l.persona), missing }
 ```
 
 ## Appendix B. `workflows/draft.js`
@@ -1431,7 +1443,7 @@ One drafting engine for the PRD and the architecture document (§4.1). The skill
 ```js
 export const meta = {
   name: 'draft',
-  description: "One author drafts a document to its contract, a checker validates it, the three-lens panel challenges it (forming its view before reading the rationale), and the author rewrites it with a Challenged claims appendix and a premortem. Serves the PRD (river; lenses river, toni, kai) and the architecture document (akira; lenses morgan, alex, jordan). Args: artifact ('prd' | 'architecture'), runId, runDir (absolute cache directory), projectRoot (absolute path of the project repository), pluginRoot, timestamp, inputs (absolute paths of the documents to read; the skill lists the ones that exist), outputPath (optional; default from the artifact table), startAt (optional: draft | validate | panel | synthesize; earlier stages are skipped and the document on disk is used), lenses (optional). Normally launched by /ck:prd or /ck:architecture, which own the review before and after.",
+  description: "One author drafts a document to its contract, a checker validates it, the three-lens panel challenges it (forming its view before reading the rationale), and the author rewrites it with a Challenged claims appendix and a premortem. Serves the PRD (river; lenses river, toni, kai) and the architecture document (akira; lenses morgan, alex, jordan). Normally launched by /ck:prd or /ck:architecture with an object: artifact ('prd' | 'architecture'), runId, runDir (absolute cache directory), projectRoot (absolute path of the project repository), pluginRoot, timestamp, inputs (absolute paths of the documents to read; the skill lists the ones that exist), outputPath (optional; default from the artifact table), startAt (optional: draft | validate | panel | synthesize; earlier stages are skipped and the document on disk is used), lenses (optional). A direct /ck:draft prd works too, with everything defaulted to the current project.",
   phases: [
     { title: 'Draft', detail: 'the author writes the document from its inputs to the contract; every claim not from the inputs tagged [C<n>]' },
     { title: 'Validate', detail: 'one neutral Haiku agent checks the contract checklist; the author revises at most twice' },
@@ -1474,27 +1486,30 @@ const ARTIFACTS = {
   },
 }
 
-if (!args || !args.artifact || !ARTIFACTS[args.artifact]) {
-  throw new Error("draft: args.artifact must be one of " + Object.keys(ARTIFACTS).join(', '))
+// Launched by /ck:prd and /ck:architecture with an object. A direct /ck:draft prd or
+// /ck:draft architecture also works: the text names the artifact and everything else defaults.
+const a = (args && typeof args === 'object') ? args : { artifact: (typeof args === 'string' && args.trim()) ? args.trim().split(/\s+/)[0] : 'prd' }
+if (!a.artifact || !ARTIFACTS[a.artifact]) {
+  throw new Error('draft: the artifact must be one of ' + Object.keys(ARTIFACTS).join(', '))
 }
-if (!args.runId || !args.runDir || !args.projectRoot || !args.pluginRoot || !args.timestamp) {
-  throw new Error('draft: args.runId, args.runDir, args.projectRoot, args.pluginRoot, and args.timestamp are required')
-}
-const A = ARTIFACTS[args.artifact]
-const runDir = args.runDir
-const projectRoot = args.projectRoot
-const stamp = args.timestamp
+const A = ARTIFACTS[a.artifact]
+const projectRoot = a.projectRoot || '.'
+const runDir = a.runDir || (projectRoot + '/.ck/runs/draft-' + a.artifact + '-latest')
+const runId = a.runId || 'draft-' + a.artifact + '-direct'
+const stamp = a.timestamp || 'today (write the date from `date -u`)'
 const author = 'ck:' + A.author
-const outPath = args.outputPath || (projectRoot + '/' + A.path)
+const outPath = a.outputPath || (projectRoot + '/' + A.path)
 const rationalePath = projectRoot + '/' + A.rationale
-const contract = args.pluginRoot + '/' + A.contract
-const inputs = Array.isArray(args.inputs) && args.inputs.length ? args.inputs : [rationalePath]
+const contractStep = a.pluginRoot
+  ? 'Read ' + a.pluginRoot + '/' + A.contract + ' (the contract).'
+  : 'Load the skill ck:' + A.contract.split('/')[1] + ' with the Skill tool (the contract).'
+const inputs = Array.isArray(a.inputs) && a.inputs.length ? a.inputs : [rationalePath]
 const SECTIONS = A.sections
 const MAX_REVISIONS = 2
 const VALIDATOR_MODEL = 'claude-haiku-4-5-20251001'
 
 const ORDER = ['draft', 'validate', 'panel', 'synthesize']
-const startAt = ORDER.includes(args.startAt) ? args.startAt : 'draft'
+const startAt = ORDER.includes(a.startAt) ? a.startAt : 'draft'
 const runs = stage => ORDER.indexOf(stage) >= ORDER.indexOf(startAt)
 if (startAt !== 'draft') log(`draft: starting at ${startAt}; ${outPath} on disk is the draft`)
 
@@ -1574,8 +1589,8 @@ if (runs('draft')) {
   draft = await agent(
     `The project repository is ${projectRoot}. Read these inputs: ${inputs.join(', ')}. They record what the ` +
     `author already decided; do not re-ask any of it.\n` +
-    `Read ${contract}. It is the contract for this document: section order, required fields, and the ` +
-    `checklist your draft will be validated against.\n` +
+    `${contractStep} It gives the section order, required fields, and the checklist your draft will be ` +
+    `validated against.\n` +
     `Write ${outPath} to that contract, all sections in this order (create the directory if needed): ` +
     SECTIONS.map(s => '"' + s + '"').join(', ') + `.\n` +
     `Apply your Required Behaviors in subagent form. Leave Appendix B (the premortem) for the pass after the ` +
@@ -1596,7 +1611,7 @@ if (runs('validate')) {
   phase('Validate')
   for (let round = 1; round <= MAX_REVISIONS + 1; round++) {
     validation = await agent(
-      `Read ${contract} and ${outPath}. Check the document against every numbered item in the contract's ` +
+      `${contractStep} Read ${outPath}. Check the document against every numbered item in the contract's ` +
       `checklist and against the section order. Return valid=true only if every item holds. For each unmet ` +
       `item, one line in missing that quotes the checklist item and says what is absent or wrong. Judge the ` +
       `shape, not the product.`,
@@ -1610,7 +1625,7 @@ if (runs('validate')) {
     }
     log(`validate: ${validation.missing.length} unmet item(s); ${A.author} revises (revision ${round} of ${MAX_REVISIONS})`)
     const revised = await agent(
-      `Read ${contract}, the inputs (${inputs.join(', ')}), and ${outPath}. A checker found these unmet ` +
+      `${contractStep} Read the inputs (${inputs.join(', ')}) and ${outPath}. A checker found these unmet ` +
       `checklist items:\n` + validation.missing.map(m => '- ' + m).join('\n') + '\n' +
       `Revise ${outPath} in place so each item holds. Keep every existing [C<n>] tag and add tags for any new ` +
       `claim not from the inputs. Return the updated draft object; path must be '${outPath}'.`,
@@ -1625,13 +1640,13 @@ if (runs('validate')) {
 let panel = null
 if (runs('panel')) {
   phase('Panel')
-  const lenses = Array.isArray(args.lenses) && args.lenses.length ? args.lenses : A.lenses
+  const lenses = Array.isArray(a.lenses) && a.lenses.length ? a.lenses : A.lenses
   try {
     panel = await workflow('ck:panel', {
-      runId: args.runId,
+      runId,
       runDir,
       projectRoot,
-      pluginRoot: args.pluginRoot,
+      pluginRoot: a.pluginRoot,
       timestamp: stamp,
       question: A.question,
       contextPath: outPath,
@@ -1657,7 +1672,7 @@ const panelInputs = panel && panel.memoPath
     ? `every file under ${runDir}/panel/ (the memo was not written)`
     : 'nothing else: the panel did not run, and the document header must say so')
 const final = await agent(
-  `Read the inputs (${inputs.join(', ')}), ${outPath}, ${contract}, and ${panelInputs}.\n` +
+  `${contractStep} Read the inputs (${inputs.join(', ')}), ${outPath}, and ${panelInputs}.\n` +
   `Rewrite ${outPath}: the same sections, in contract order, revised where the panel showed a claim wrong or ` +
   `unsupported, followed by two appendices.\n` +
   `Appendix A, Challenged claims: one row per point a lens raised against a [C<n>] claim or against something ` +
@@ -1669,14 +1684,14 @@ const final = await agent(
   `it exposes; add that assumption to the Assumptions section; leave the question "What went wrong?" ` +
   `verbatim for the author. The review asks it.\n` +
   `Check your own output against the contract's checklist before returning. List every decision you left ` +
-  `open under openDecisions. Generated ${stamp}, run ${args.runId}. Return the object; path must be '${outPath}'.`,
+  `open under openDecisions. Generated ${stamp}, run ${runId}. Return the object; path must be '${outPath}'.`,
   { label: `${A.author}:synthesize`, phase: 'Synthesize', agentType: author, schema: FINAL_SCHEMA },
 )
 if (!final) throw new Error(`draft: ${A.author} returned nothing for the synthesis; the draft is at ` + outPath)
 
 return {
-  runId: args.runId,
-  artifact: args.artifact,
+  runId,
+  artifact: a.artifact,
   startedAt: startAt,
   path: final.path,
   memoPath: panel ? panel.memoPath : null,
@@ -1694,7 +1709,7 @@ return {
 ```js
 export const meta = {
   name: 'brief',
-  description: 'Toni runs a basic market pass (three to five comparable products, sourced), River writes docs/brief.md from one line of idea text to the brief contract, and a checker validates the shape. Args: runId, runDir (absolute cache directory), projectRoot (absolute path of the project repository), pluginRoot, timestamp, idea (text; may be empty when opportunityPath is given), opportunityPath (optional; absolute), marketResearchPath (optional; absolute), briefPath (optional; default <projectRoot>/docs/brief.md).',
+  description: 'Toni runs a basic market pass (three to five comparable products, sourced), River writes docs/brief.md from one line of idea text to the brief contract, and a checker validates the shape. Type /ck:brief followed by the idea in a sentence; the text is the only argument needed. A skill may instead pass an object: runId, runDir (absolute cache directory), projectRoot (absolute path of the project repository), pluginRoot, timestamp, idea, opportunityPath (optional; absolute), marketResearchPath (optional; absolute), briefPath (optional; default <projectRoot>/docs/brief.md).',
   phases: [
     { title: 'Market pass', detail: 'ck:toni finds three to five comparable products with a source each, reading market research and the opportunity first when they exist' },
     { title: 'Draft', detail: 'ck:river writes the brief: problem and root-cause chain, user, success metric, comparable products, scope with a smaller first version, non-goals, open questions' },
@@ -1703,19 +1718,24 @@ export const meta = {
   personas: ['toni', 'river'],
 }
 
-if (!args || !args.runId || !args.runDir || !args.projectRoot || !args.pluginRoot || !args.timestamp) {
-  throw new Error('brief: args.runId, args.runDir, args.projectRoot, args.pluginRoot, and args.timestamp are required')
+// Direct invocation (/ck:brief <idea>) hands the typed text to the script as a string; a skill
+// launch passes an object. Both are accepted. Paths default to the project the session is in,
+// and without a plugin root the contract is loaded by skill name instead of by path.
+const a = (args && typeof args === 'object') ? args : { idea: typeof args === 'string' ? args.trim() : '' }
+if (!a.idea && !a.opportunityPath) {
+  throw new Error('brief: type the idea after the command, for example /ck:brief An app that reminds you to water each plant on its own schedule. Or run /ck:opportunity first so the brief can start from docs/opportunity.md.')
 }
-if (!args.idea && !args.opportunityPath) {
-  throw new Error('brief: give an idea in a sentence, or run /ck:opportunity first so the brief can start from docs/opportunity.md')
-}
-const projectRoot = args.projectRoot
-const briefPath = args.briefPath || (projectRoot + '/docs/brief.md')
-const contract = args.pluginRoot + '/skills/brief-artifact/SKILL.md'
-const stamp = args.timestamp
-const runDir = args.runDir
-const existing = [args.opportunityPath, args.marketResearchPath].filter(Boolean)
-const ideaText = args.idea || 'Take the idea from the concept statement in ' + args.opportunityPath
+const projectRoot = a.projectRoot || '.'
+const runDir = a.runDir || (projectRoot + '/.ck/runs/brief-latest')
+const runId = a.runId || 'brief-direct'
+const stamp = a.timestamp || 'today (write the date from `date -u`)'
+const briefPath = a.briefPath || (projectRoot + '/docs/brief.md')
+const contractStep = a.pluginRoot
+  ? 'Read ' + a.pluginRoot + '/skills/brief-artifact/SKILL.md (the brief contract).'
+  : 'Load the skill ck:brief-artifact with the Skill tool (the brief contract).'
+const housekeeping = a.runDir ? '' : 'If ' + projectRoot + '/.git exists, make sure the line ".ck/" is in ' + projectRoot + '/.git/info/exclude (append it if missing). '
+const existing = [a.opportunityPath, a.marketResearchPath].filter(Boolean)
+const ideaText = a.idea || 'Take the idea from the concept statement in ' + a.opportunityPath
 const VALIDATOR_MODEL = 'claude-haiku-4-5-20251001'
 const SECTIONS = ['Idea', 'Problem and root-cause chain', 'User', 'Success metric and leading indicator', 'Comparable products', 'Scope', 'Non-goals', 'Open questions for the author']
 
@@ -1740,29 +1760,19 @@ const MARKET_SCHEMA = {
   required: ['comparables', 'crowding', 'readFirst', 'searchesRun'],
 }
 
+// The brief is on disk; the return value carries only what the closing message needs, so the
+// author is not paid twice for the same words.
 const BRIEF_SCHEMA = {
   type: 'object',
   properties: {
     briefPath: { type: 'string' },
     title: { type: 'string' },
-    rootCauseChain: { type: 'array', items: { type: 'string' } },
-    user: { type: 'string' },
-    successMetric: { type: 'string' },
-    leadingIndicator: { type: 'string' },
+    chainSteps: { type: 'number' },
     comparables: { type: 'number' },
-    v0: {
-      type: 'object',
-      properties: {
-        scope: { type: 'string' },
-        cuts: { type: 'array', items: { type: 'string' } },
-        recommendation: { type: 'string' },
-      },
-      required: ['scope', 'cuts', 'recommendation'],
-    },
-    nonGoals: { type: 'array', items: { type: 'string' } },
+    nonGoals: { type: 'number' },
     openQuestions: { type: 'array', items: { type: 'string' } },
   },
-  required: ['briefPath', 'title', 'rootCauseChain', 'user', 'successMetric', 'leadingIndicator', 'comparables', 'v0', 'nonGoals', 'openQuestions'],
+  required: ['briefPath', 'title', 'chainSteps', 'comparables', 'nonGoals', 'openQuestions'],
 }
 
 const VALIDATION_SCHEMA = {
@@ -1779,13 +1789,14 @@ const VALIDATION_SCHEMA = {
 phase('Market pass')
 const market = await agent(
   `The idea, in the author's words: ${ideaText}\n` +
+  housekeeping +
   (existing.length
     ? `Read these first and search only for what they lack: ${existing.join(', ')}. List what you read in readFirst.\n`
     : `There is no market research or opportunity analysis yet; readFirst is empty.\n`) +
   `Find three to five comparable products: for each, in one paragraph of at most sixty words, what it does, ` +
   `who it is for, its price or business model, the gap this idea would fill, and one source URL. Add one ` +
   `paragraph on how crowded the space is. ` +
-  `Use web search; record how many searches you ran. Write the object as JSON to ${runDir}/market.json and return it.`,
+  `Use web search; record how many searches you ran. Write the object as JSON to ${runDir}/market.json (create the directory if needed) and return it.`,
   { label: 'toni:market', phase: 'Market pass', agentType: 'ck:toni', schema: MARKET_SCHEMA },
 )
 if (!market) log('market pass: Toni returned nothing; the brief will say the comparable-products section is pending')
@@ -1796,7 +1807,7 @@ phase('Draft')
 let brief = await agent(
   `The author's idea, in their own words: ${ideaText}\n` +
   (existing.length ? `Also read: ${existing.join(', ')}.\n` : '') +
-  `Read ${contract}. It is the brief contract: section order, required fields, and the checklist your brief ` +
+  `${contractStep} It gives the section order, required fields, and the checklist your brief ` +
   `will be validated against. The sections, in order: ` + SECTIONS.map(s => '"' + s + '"').join(', ') + `.\n` +
   (market
     ? `Comparable products, from Toni's market pass (attribute the section to it and cite its sources):\n` +
@@ -1809,18 +1820,20 @@ let brief = await agent(
   `your recommendation with the decision marked open for the author. Premortem: not yet; it belongs to the PRD.\n` +
   `One primary user. One success number with a target and a date, plus one leading indicator. At least two ` +
   `non-goals. Anything you would have asked the author goes under Open questions for the author, each with ` +
-  `the assumption you proceeded on; the list is present even when empty.\n` +
+  `the assumption you proceeded on; the list is present even when empty. Date the document ${stamp}.\n` +
   `Plain words, under 1,200 words in all: this is the short document that governs the long one. ` +
-  `Return the brief object; briefPath must be '${briefPath}'; comparables is the count you wrote.`,
+  `Return only the brief object: briefPath must be '${briefPath}'; chainSteps, comparables, and nonGoals are ` +
+  `counts of what you wrote; openQuestions is the list of open questions, one line each. Do not repeat the ` +
+  `document in the return value.`,
   { label: 'river:draft', phase: 'Draft', agentType: 'ck:river', schema: BRIEF_SCHEMA },
 )
 if (!brief) throw new Error('brief: River returned nothing')
-log(`brief: ${brief.rootCauseChain.length} step(s) in the root-cause chain, ${brief.comparables} comparable(s), ${brief.openQuestions.length} open question(s)`)
+log(`brief: ${brief.chainSteps} step(s) in the root-cause chain, ${brief.comparables} comparable(s), ${brief.openQuestions.length} open question(s)`)
 
 // ---- Validate ----
 phase('Validate')
 const validation = await agent(
-  `Read ${contract} and ${briefPath}. Check the brief against every numbered item in the contract's ` +
+  `${contractStep} Read ${briefPath}. Check the brief against every numbered item in the contract's ` +
   `checklist and against the section order. Return valid=true only if every item holds. For each unmet item, ` +
   `one line in missing that quotes the checklist item and says what is absent or wrong. Judge the shape, not ` +
   `the idea.`,
@@ -1829,9 +1842,9 @@ const validation = await agent(
 if (validation && !validation.valid) {
   log(`validate: ${validation.missing.length} unmet item(s); River revises once`)
   const revised = await agent(
-    `Read ${contract} and ${briefPath}. A checker found these unmet checklist items:\n` +
+    `${contractStep} Read ${briefPath}. A checker found these unmet checklist items:\n` +
     validation.missing.map(m => '- ' + m).join('\n') + '\n' +
-    `Revise ${briefPath} in place so each item holds. Return the updated brief object; briefPath must be '${briefPath}'.`,
+    `Revise ${briefPath} in place so each item holds. Return only the updated brief object (counts and open questions); briefPath must be '${briefPath}'.`,
     { label: 'river:revise', phase: 'Validate', agentType: 'ck:river', schema: BRIEF_SCHEMA },
   )
   if (revised) brief = revised
@@ -1843,7 +1856,7 @@ if (validation && !validation.valid) {
 }
 
 return {
-  runId: args.runId,
+  runId,
   briefPath: brief.briefPath,
   title: brief.title,
   comparables: brief.comparables,
@@ -1858,7 +1871,7 @@ return {
 ```js
 export const meta = {
   name: 'team',
-  description: 'Team selection and roles and responsibilities. River reads the product documents and the roster and nominates a cast with an owner per document and stage; each nominee confirms or declines on its own tier and names what it needs and one missing seat; River writes docs/TEAM.md; a checker validates it. Args: runId, runDir (absolute cache directory), projectRoot (absolute path of the project repository), pluginRoot, timestamp, inputs (absolute paths of the documents that exist: opportunity, brief, PRD, market research; at least one of the first two), teamPath (optional; default <projectRoot>/docs/TEAM.md), maxCast (optional; default 8).',
+  description: 'Team selection and roles and responsibilities. River reads the product documents and the roster and nominates a cast with an owner per document and stage; each nominee confirms or declines on its own tier and names what it needs and one missing seat; River writes docs/TEAM.md; a checker validates it. Type /ck:team with nothing after it. A skill may instead pass an object: runId, runDir (absolute cache directory), projectRoot (absolute path of the project repository), pluginRoot, timestamp, inputs (absolute paths of the documents that exist: opportunity, brief, PRD, market research; at least one of the first two), teamPath (optional; default <projectRoot>/docs/TEAM.md), maxCast (optional; default 8).',
   phases: [
     { title: 'Nominate', detail: 'ck:river proposes the cast: an owner and reviewers per pipeline document and stage, and the missing seats' },
     { title: 'Confirm', detail: 'every nominee, in parallel on its own tier at low effort, accepts or declines each responsibility, names its needs, one risk, and one missing seat' },
@@ -1868,20 +1881,26 @@ export const meta = {
   personas: ['river', 'akira', 'alex', 'casey', 'cornelius', 'ernie', 'iris', 'jordan', 'kai', 'morgan', 'noon', 'piper', 'quinn', 'reiner', 'rez', 'robin', 'sage', 'sasha', 'toni', 'tracy', 'travolta'],
 }
 
-if (!args || !args.runId || !args.runDir || !args.projectRoot || !args.pluginRoot || !args.timestamp) {
-  throw new Error('team: args.runId, args.runDir, args.projectRoot, args.pluginRoot, and args.timestamp are required')
-}
-if (!Array.isArray(args.inputs) || !args.inputs.length) {
-  throw new Error('team: args.inputs must list at least one of docs/opportunity.md or docs/brief.md')
-}
-const projectRoot = args.projectRoot
-const runDir = args.runDir
-const stamp = args.timestamp
-const inputs = args.inputs
-const teamPath = args.teamPath || (projectRoot + '/docs/TEAM.md')
-const roster = args.pluginRoot + '/profiles/ROSTER.md'
-const contract = args.pluginRoot + '/skills/team-artifact/SKILL.md'
-const MAX_CAST = Number.isInteger(args.maxCast) && args.maxCast > 0 ? Math.min(args.maxCast, 12) : 8
+// Direct invocation (/ck:team) needs no arguments: the documents that exist in the project are
+// read. A skill may pass an object. Without a plugin root the roster and the contract are loaded
+// by skill name instead of by path.
+const a = (args && typeof args === 'object') ? args : {}
+const projectRoot = a.projectRoot || '.'
+const runDir = a.runDir || (projectRoot + '/.ck/runs/team-latest')
+const runId = a.runId || 'team-direct'
+const stamp = a.timestamp || 'today (write the date from `date -u`)'
+const inputs = Array.isArray(a.inputs) && a.inputs.length
+  ? a.inputs
+  : ['whichever of ' + projectRoot + '/docs/opportunity.md, ' + projectRoot + '/docs/brief.md, ' + projectRoot + '/docs/PRD.md, and ' + projectRoot + '/docs/market-research.md exist (stop and say so if neither of the first two does)']
+const teamPath = a.teamPath || (projectRoot + '/docs/TEAM.md')
+const rosterStep = a.pluginRoot
+  ? 'Read the roster: ' + a.pluginRoot + '/profiles/ROSTER.md (one line per persona: name, role, tier, domain).'
+  : 'Load the skill ck:roster with the Skill tool (the roster: one line per persona with name, role, tier, domain).'
+const contractStep = a.pluginRoot
+  ? 'Read ' + a.pluginRoot + '/skills/team-artifact/SKILL.md (the team contract).'
+  : 'Load the skill ck:team-artifact with the Skill tool (the team contract).'
+const housekeeping = a.runDir ? '' : 'If ' + projectRoot + '/.git exists, make sure the line ".ck/" is in ' + projectRoot + '/.git/info/exclude (append it if missing). '
+const MAX_CAST = Number.isInteger(a.maxCast) && a.maxCast > 0 ? Math.min(a.maxCast, 12) : 8
 const VALIDATOR_MODEL = 'claude-haiku-4-5-20251001'
 const SECTIONS = ['Cast', 'Roles and responsibilities', 'Hand-off order', 'Needs', 'Missing seats', 'Declined nominations']
 
@@ -1975,8 +1994,8 @@ const VALIDATION_SCHEMA = {
 // ---- Nominate ----
 phase('Nominate')
 const nominations = await agent(
-  `The project repository is ${projectRoot}. Read the product documents: ${inputs.join(', ')}. Read the ` +
-  `roster: ${roster} (one line per persona: name, role, tier, domain).\n` +
+  `The project repository is ${projectRoot}. ` + housekeeping + `Read the product documents: ${inputs.join(', ')}. ` +
+  `${rosterStep}\n` +
   `Say what kind of product this is in one line (productKind). Then propose the cast, at most ${MAX_CAST} ` +
   `personas, choosing by what the product needs, not by seniority: for each pipeline document and stage ` +
   `(opportunity, market research, brief, PRD, roadmap, architecture, brand guide, design, and any build ` +
@@ -1995,8 +2014,8 @@ log(`nominate: ${nominations.productKind}; ${cast.length} nominated; ${nominatio
 // ---- Confirm ----
 phase('Confirm')
 const confirmations = (await parallel(cast.map(n => () => agent(
-  `You are ${n.persona}. You have been nominated to this product's team. Read ${inputs.join(', ')} and ` +
-  `${roster}.\n` +
+  `You are ${n.persona}. You have been nominated to this product's team. Read ${inputs.join(', ')}. ` +
+  `${rosterStep}\n` +
   `Your nomination: ${n.why}. Responsibilities proposed for you:\n` +
   n.responsibilities.map(r => `- ${r.role} of ${r.item}`).join('\n') + '\n' +
   `For each responsibility: accept or decline, with a reason from your domain; when you decline, name the ` +
@@ -2015,18 +2034,18 @@ log(`confirm: ${confirmations.length} confirmation(s), ${declined} declined resp
 // ---- Assemble ----
 phase('Assemble')
 let team = await agent(
-  `Read ${contract}. It is the team contract: section order, required fields, and the checklist. The ` +
+  `${contractStep} It gives the section order, required fields, and the checklist. The ` +
   `sections, in order: ` + SECTIONS.map(s => '"' + s + '"').join(', ') + `.\n` +
   `Your nominations: ${runDir}/nominations.json. The confirmations: every file under ${runDir}/confirmations/ ` +
   (silent.length ? `(${silent.join(', ')} did not answer; treat their nominations as accepted and say so). ` : '') +
-  `The product documents: ${inputs.join(', ')}. The roster: ${roster}.\n` +
+  `The product documents: ${inputs.join(', ')}. ${rosterStep}\n` +
   `Write ${teamPath} (create the directory if needed): the Cast table (persona, role, tier, why on this ` +
   `product); the Roles and responsibilities matrix (one row per pipeline document and stage, and per PRD ` +
   `requirement area when a PRD exists; columns owner, contributors, reviewers; exactly one owner per row); ` +
   `the Hand-off order (who hands to whom, in pipeline order, and what each hand-off carries); Needs (per ` +
   `persona, from the confirmations); Missing seats (yours and the nominees', merged, with a recommendation ` +
   `each); Declined nominations (persona, responsibility, reason, replacement). Where a nominee declined and ` +
-  `named a replacement, take it or say why not. Generated ${stamp}, run ${args.runId}.\n` +
+  `named a replacement, take it or say why not. Generated ${stamp}, run ${runId}.\n` +
   `Return the object; teamPath must be '${teamPath}'; declined is the number of declined responsibilities.`,
   { label: 'river:assemble', phase: 'Assemble', agentType: 'ck:river', schema: TEAM_SCHEMA },
 )
@@ -2035,7 +2054,7 @@ if (!team) throw new Error('team: River returned nothing for the assembly; nomin
 // ---- Validate ----
 phase('Validate')
 const validation = await agent(
-  `Read ${contract} and ${teamPath}. Check the document against every numbered item in the contract's ` +
+  `${contractStep} Read ${teamPath}. Check the document against every numbered item in the contract's ` +
   `checklist and against the section order, including "every pipeline document has exactly one owner". ` +
   `Return valid=true only if every item holds; for each unmet item, one line in missing that quotes the ` +
   `checklist item and says what is absent or wrong.`,
@@ -2044,7 +2063,7 @@ const validation = await agent(
 if (validation && !validation.valid) {
   log(`validate: ${validation.missing.length} unmet item(s); River revises once`)
   const revised = await agent(
-    `Read ${contract} and ${teamPath}. A checker found these unmet checklist items:\n` +
+    `${contractStep} Read ${teamPath}. A checker found these unmet checklist items:\n` +
     validation.missing.map(m => '- ' + m).join('\n') + '\n' +
     `Revise ${teamPath} in place so each item holds. Return the updated object; teamPath must be '${teamPath}'.`,
     { label: 'river:revise', phase: 'Validate', agentType: 'ck:river', schema: TEAM_SCHEMA },
@@ -2058,7 +2077,7 @@ if (validation && !validation.valid) {
 }
 
 return {
-  runId: args.runId,
+  runId,
   teamPath: team.teamPath,
   productKind: nominations.productKind,
   cast: team.cast,
@@ -2377,7 +2396,7 @@ Prices per million tokens from the pricing page read 2026-09-05 [D]: Fable 5.1 $
 | Command | Agents | Arithmetic | About |
 |---|---|---|---|
 | `/ck:panel` | 4 | River $0.33 + Toni $0.17 + Kai $0.07 + synthesis $0.25 | **$0.80** |
-| `/ck:brief` | 3 to 4 | Toni market pass $0.22 + River $0.32 (12k/4k) + validator $0.02, plus $0.30 for one revision. **Measured 2026-09-09, first drill, before the length rule: $2.50**, with River and Toni each writing about 11k output tokens; the 1,200-word rule in the contract is the correction | **$0.55 to $0.85 estimated; $2.50 measured before the length rule** |
+| `/ck:brief` | 3 to 4 | Toni market pass $0.22 + River $0.32 (12k/4k) + validator $0.02, plus $0.30 for one revision. **Measured 2026-09-09: $2.50 on the first drill before the length rule, $2.09 after it** (River 8.1k and Toni 9.8k output tokens for a 1,195-word brief; the return schema repeated the document and now carries counts only; re-measure) | **$0.55 to $0.85 estimated; $2.50 measured before the length rule** |
 | `/ck:prd` | 7 to 9 | River draft $0.60 (20k/8k) + validator $0.02 + panel $0.80 + River rewrite $0.85 (35k/10k) | **$2.30**, plus $0.65 per revision, plus finalize (inline, session model, about $0.35) |
 | `/ck:architecture` | 7 to 9 | Akira draft $0.65 + validator $0.02 + panel (Morgan $0.33, Alex $0.07, Jordan $0.17, synthesis $0.25) + Akira rewrite $0.85 | **$2.40** |
 | `/ck:opportunity` | 7 to 9 | River frame $0.33 + Toni $0.22 + Akira $0.33 + domain seat $0.22 to $0.33 + Sage $0.33 + River assemble $0.85 + validator $0.02 | **$2.30 to $2.50** |
