@@ -1169,7 +1169,7 @@ For Will (answered):
 
 Added after drill 6 (2026-10-01):
 
-9. **Which tier for River's rewrite and finalize stages?** They are editing against a memo rather than judgment, and they write three quarters of a PRD run's cost on Fable 5.1 (`tests/drill/2026-10-01.md` in `ck`). Moving those two stages to Opus 5 by a per-stage override in `draft.js` would cut a PRD to about $4; keeping them on Fable keeps "Fable where it matters" literal. Will's call.
+9. **Which tier for River's rewrite and finalize stages? Answered: Fable** (Will, 2026-10-01). They stay on River's tier; about $8 per PRD is the accepted cost, and the remaining levers are turn counts, not models (`tests/drill/2026-10-01.md` in `ck`).
 10. The panel inside `/ck:prd` has returned yes-if from every lens on three runs. Reword its question to force a stance before any other panel change.
 
 Harness unknowns the drill answers:
