@@ -5,6 +5,35 @@ Auto-maintained via [claude-devlog-skill](https://github.com/code-katz/claude-de
 
 ---
 
+## [2026-10-01] `ck`: the whole phase-one pipeline built and drilled; every command measured
+
+### What happened
+
+The last five pipeline commands were built today on `code-katz/ck`, each on its own branch with a pull request: `/ck:opportunity`, `/ck:market-research`, and `/ck:roadmap` (merged), then `/ck:brand-guide` (PR #11) and `/ck:design` (PR #12, stacked on #11 because it needs the gallery renderer). Two fix PRs followed the drills: #10 (a revision is the smallest edit, not a rewrite) and #13 (team re-checks after a revision, a team word cap, housekeeping by one Bash line).
+
+Every command then ran end to end from a nested Claude Code on a fixture project, three runs at a time, with the galleries and review pages published. The numbers, for one complete document each, both passes where the command has a review gate:
+
+| Command | Measured | PRD estimate | Where the money went |
+|---|---|---|---|
+| `/ck:prd` (drill 6) | $8.05 | $2.30 | River's four Fable stages; accepted by Will |
+| `/ck:opportunity` (7) | $16.73 | $2.40 | Two validator-driven revisions on Fable, fixed in #10 |
+| `/ck:brand-guide` (8) | $7.82 | $2.50 | Opus writing SVG and HTML; nothing to cut |
+| `/ck:design` (9) | $10.32 | $1.20 | Kai writing a 59 KB page by hand; fixed on the branch |
+| `/ck:roadmap` (10) | $1.93 | $0.80 | As designed |
+| `/ck:team` (11) | $6.87 | $1.40 | A 4,100-word document; capped in #13 |
+| `/ck:architecture` (12) | $15.87 | $2.40 | Akira's 93k-token rewrite after the panel |
+| `/ck:market-research` (13) | about $12, cut before validation by a container restart | $1.20 | Toni's 82-turn write |
+
+The pattern across all of them: the estimates assumed a document is written once, and the measured runs show that revisions, rewrites, and hand-built pages cost more than the first draft. The fixes are all of one kind: write once, edit smallest, render pages from files, check after every pass that changes the document.
+
+### What it means for the PRD
+
+The pipeline exists and runs the way §6 describes it, with two shape changes recorded there: the brand and design galleries are rendered by a script from the authors' files (no model writes page chrome), and the design variants stage runs three Kai agents in parallel so the variants stay distinct. Appendix I carries the measured cost beside every estimate. The panel returned yes-if from all three lenses on both the PRD and the architecture; the question invites it, and open question 10 stands.
+
+### What is next
+
+Will merges the four open PRs in order (#10, #11, #12, #13). Then the re-measurements that the fixes promise (opportunity, design, team), the post-rewrite check for the architecture, the marketplace entry, and Clare's install.
+
 ## [2026-09-09] `ck` Phase 0: six of eight spikes answered in one cloud session; the nested panel must be called by name
 
 **Category:** `milestone`
