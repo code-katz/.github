@@ -1167,6 +1167,11 @@ For Will (answered):
 1. **`/ck:feature` in phase one? Answered: no.** Will confirmed on 2026-09-09 that it stays in phase two, because it consumes phase one's documents and would double the build. When its turn comes it is added as a §6 subsection with the worktree stages, and Phase 0 of that release gains a spike on `isolation: 'worktree'` for persona agents.
 2. Proposal §8.7, verbatim: "Routines integration. Which workflows, if any, should run scheduled or on GitHub events?" `market-research` is the proposed first.
 
+Added after drill 6 (2026-10-01):
+
+9. **Which tier for River's rewrite and finalize stages?** They are editing against a memo rather than judgment, and they write three quarters of a PRD run's cost on Fable 5.1 (`tests/drill/2026-10-01.md` in `ck`). Moving those two stages to Opus 5 by a per-stage override in `draft.js` would cut a PRD to about $4; keeping them on Fable keeps "Fable where it matters" literal. Will's call.
+10. The panel inside `/ck:prd` has returned yes-if from every lens on three runs. Reword its question to force a stance before any other panel change.
+
 Harness unknowns the drill answers:
 
 3. **Answered yes** (2026-09-09): the Workflow tool ran `name: "ck:draft-spike"` on the first attempt. `name` is the specified form; a `scriptPath` outside the working directory is refused.
@@ -1597,9 +1602,9 @@ if (runs('validate')) {
     const revised = await agent(
       `${contractStep} Read the inputs (${inputs.join(', ')}) and ${outPath}. A checker found these unmet ` +
       `checklist items:\n` + validation.missing.map(m => '- ' + m).join('\n') + '\n' +
-      `Revise ${outPath} in place so each item holds. Keep every existing [C<n>] tag and add tags for any new ` +
+      `Revise ${outPath} so each item holds. Write the whole file with one Write call; do not build it with piecemeal edits, and do not re-read it after writing. Keep every existing [C<n>] tag and add tags for any new ` +
       `claim not from the inputs. Return the updated draft object; path must be '${outPath}'.`,
-      { label: `${A.author}:revise:${round}`, phase: 'Validate', agentType: author, schema: DRAFT_SCHEMA },
+      { label: `${A.author}:revise:${round}`, phase: 'Validate', agentType: author, effort: 'medium', schema: DRAFT_SCHEMA },
     )
     if (!revised) { log('validate: revision returned nothing; keeping the previous draft'); break }
     draft = revised
@@ -1818,8 +1823,8 @@ if (validation && !validation.valid) {
   const revised = await agent(
     `${contractStep} Read ${briefPath}. A checker found these unmet checklist items:\n` +
     validation.missing.map(m => '- ' + m).join('\n') + '\n' +
-    `Revise ${briefPath} in place so each item holds. Return only the updated brief object (counts and open questions); briefPath must be '${briefPath}'.`,
-    { label: 'river:revise', phase: 'Validate', agentType: 'ck:river', schema: BRIEF_SCHEMA },
+    `Revise ${briefPath} so each item holds. Write the whole file with one Write call; do not build it with piecemeal edits, and do not re-read it after writing. Return only the updated brief object (counts and open questions); briefPath must be '${briefPath}'.`,
+    { label: 'river:revise', phase: 'Validate', agentType: 'ck:river', effort: 'medium', schema: BRIEF_SCHEMA },
   )
   if (revised) brief = revised
   else log('validate: revision returned nothing; keeping the first draft')
@@ -2039,8 +2044,8 @@ if (validation && !validation.valid) {
   const revised = await agent(
     `${contractStep} Read ${teamPath}. A checker found these unmet checklist items:\n` +
     validation.missing.map(m => '- ' + m).join('\n') + '\n' +
-    `Revise ${teamPath} in place so each item holds. Return the updated object; teamPath must be '${teamPath}'.`,
-    { label: 'river:revise', phase: 'Validate', agentType: 'ck:river', schema: TEAM_SCHEMA },
+    `Revise ${teamPath} so each item holds. Write the whole file with one Write call; do not build it with piecemeal edits, and do not re-read it after writing. Return the updated object; teamPath must be '${teamPath}'.`,
+    { label: 'river:revise', phase: 'Validate', agentType: 'ck:river', effort: 'medium', schema: TEAM_SCHEMA },
   )
   if (revised) team = revised
   else log('validate: revision returned nothing; keeping the first assembly')
@@ -2378,7 +2383,7 @@ Prices per million tokens from the pricing page read 2026-09-05 [D]: Fable 5.1 $
 |---|---|---|---|
 | `/ck:panel` | 4 | River $0.33 + Toni $0.17 + Kai $0.07 + synthesis $0.25. **Measured 2026-09-09, drill 4, before the length rules: $2.68** (a 4,700-word memo returned twice); the memo is now capped at 1,500 words and the return carries counts; re-measure | **$0.80 estimated; $2.68 measured before the length rules** |
 | `/ck:brief` | 3 to 4 | Toni market pass $0.22 + River $0.32 (12k/4k) + validator $0.02, plus $0.30 for one revision. **Measured 2026-09-09: $2.50 on the first drill before the length rule, $2.09 after it** (River 8.1k and Toni 9.8k output tokens for a 1,195-word brief; the return schema repeated the document and now carries counts only; re-measure) | **$0.55 to $0.85 estimated; $2.50 measured before the length rule** |
-| `/ck:prd` | 7 to 9 | River draft $0.60 (20k/8k) + validator $0.02 + panel $0.80 + River rewrite $0.85 (35k/10k). **Measured 2026-09-09, drill 5: $16.33 for one complete PRD from scratch** (passes 5c and 5d; $28.20 across all four passes), before the review-page renderer, the one-write rule, and medium effort on the author stages; re-measure | **$2.30 estimated**, plus $0.65 per revision, plus finalize (inline, session model, about $0.35) |
+| `/ck:prd` | 7 to 9 | River draft $0.60 (20k/8k) + validator $0.02 + panel $0.80 + River rewrite $0.85 (35k/10k). **Measured: $16.33 on 2026-09-09 (drill 5) before the review-page renderer, the one-write rule, and medium effort; $8.05 on 2026-10-01 (drill 6) after them**, 16 minutes for both passes. Fable 5.1 output on River's four stages is about $6.90 of it; the tier for the rewrite and finalize stages is the next lever (§10.4) | **$2.30 estimated**, plus $0.65 per revision, plus finalize (inline, session model, about $0.35) |
 | `/ck:architecture` | 7 to 9 | Akira draft $0.65 + validator $0.02 + panel (Morgan $0.33, Alex $0.07, Jordan $0.17, synthesis $0.25) + Akira rewrite $0.85 | **$2.40** |
 | `/ck:opportunity` | 7 to 9 | River frame $0.33 + Toni $0.22 + Akira $0.33 + domain seat $0.22 to $0.33 + Sage $0.33 + River assemble $0.85 + validator $0.02 | **$2.30 to $2.50** |
 | `/ck:market-research` | 8 to 10 | Toni plan $0.17 + 5 researchers $0.35 + cross-check $0.10 + Toni write $0.30 (25k/6k) + validator $0.02 | **$1.00 to $1.20** |
