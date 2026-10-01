@@ -785,13 +785,13 @@ Three to four agents.
 
 | Stage | Agents | What happens | Writes |
 |---|---|---|---|
-| Proposals | Toni, then Iris, then Kai, then validator | Toni: a positioning line and an audience note per candidate direction. Iris: four to six brand directions, each with a name treatment, palette, type pairing, mood words, one hero mark, and a rationale and trade-off. Kai: one UI surface per direction in that direction's skin. Assembled as a gallery page, labeled A to F | `brand/proposals/gallery.html`, `brand/proposals/<label>/*.svg` |
+| Proposals | Toni, then Iris, then Kai, then validator | Toni: a positioning line and an audience note per candidate direction. Iris: four to six brand directions, each with a name treatment, palette, type pairing, mood words, one hero mark, and a rationale and trade-off. Kai: one UI surface per direction in that direction's skin. The gallery page is rendered from those files by `scripts/render-gallery.py` (no model writes page chrome) and checked by a Haiku agent against the gallery contract; Iris fixes what it names, at most twice | `brand/proposals/variants.json`, `brand/proposals/<label>/mark.svg` and `surface.html`, `brand/proposals/gallery.html` |
 | *Gate 1* | | The gallery as a review page. The author comments to pick two or three and ask for changes | `<runDir>/review-1.md` |
-| Finalists | Iris, Kai, validator | For each pick: the full palette with tokens (background, ink, accent, functional colors), the logo system (primary, secondary, lockups, clear space, minimum size, misuse), the type scale, three UI surfaces from Kai, an app icon. A gallery labeled by the proposal it came from | `brand/finalists/gallery.html`, `brand/finalists/<label>/` |
+| Finalists | Iris, Kai, validator | For each pick: the full palette with tokens (background, ink, accent, functional colors), the logo system (primary, secondary, lockups, clear space, minimum size, misuse), the type scale, three UI surfaces from Kai, an app icon. The gallery is relabeled from A, each name carrying the proposal label it came from, because the gallery contract requires consecutive labels | `brand/finalists/variants.json`, `brand/finalists/<label>/` (seven SVGs and `surface.html`), `brand/finalists/gallery.html` |
 | *Gate 2* | | The author picks one and asks for final changes | `<runDir>/review-2.md` |
-| Guide | Iris, Kai, validator | Iris writes the brand direction record (decision, locked layout system, house tokens, theme lineup, rationale, open items, asset list) and `docs/brand-guide.md` to the contract. Kai exports the final assets: SVG marks, tokens as JSON and CSS variables, the UI surfaces | `docs/decisions/<timestamp>-brand-direction.md`, `docs/brand-guide.md`, `brand/final/` |
+| Guide | Kai, then Iris, then validator | Kai exports the final assets first: the seven SVGs with the author's final changes, `tokens.json`, `tokens.css`, `surfaces.html`, and a `README.md` naming every file. Iris then writes the brand direction record (decision, locked layout system, house tokens, theme lineup, rationale, open items, asset list) and `docs/brand-guide.md` to the contract, from the exported tokens and file list, so the record's asset list and token table match the files. A Haiku agent checks both checklists; Iris revises at most twice | `docs/decisions/<timestamp>-brand-direction.md`, `docs/brand-guide.md`, `brand/final/` |
 
-Four agents per stage; three stages; two gates.
+Four agents per stage, five with a fix round; three stages; two gates. Built 2026-10-01: `workflows/brand.js` and `skills/brand-guide/SKILL.md`. The workflow refuses a direct `/ck:brand` launch, because only the skill passes the plugin root the renderer lives under and owns the two reviews.
 
 **The documents.** The galleries (contract §7.9, shared with `/ck:design`), the brand direction record and the brand guide (contract §7.8).
 
@@ -817,11 +817,11 @@ Four agents per stage; three stages; two gates.
 
 | Stage | Agents | What happens | Writes |
 |---|---|---|---|
-| Variants | River, then Kai, then validator | River: the feature's requirements, acceptance criteria, user, and the PRD's constraints on it, in one page. Kai: three labeled variants (A, B, C) of the feature's screens in device frames, in the brand skin: each with a rationale, a trade-off, which requirement each screen satisfies, and the empty, loading, and error states | `docs/design/<feature>/gallery.html`, `<runDir>/feature.md` |
+| Variants | River, then Kai, then three Kai agents in parallel, then validator | River: the feature's requirements, acceptance criteria, user, and the PRD's constraints on it, in one page; when the feature is not in the PRD, the workflow returns `found: false` and the skill asks for the requirement text in one question. Kai: three labeled concepts (A, B, C), a different structure each, with the screens each needs; then one Kai agent per variant writes every screen in a device frame (phone or desktop), in the brand skin, with its empty, loading, and error states. The gallery is rendered by `scripts/render-gallery.py` and checked by a Haiku agent, which also confirms every requirement named under Satisfies is in the PRD; Kai fixes at most twice | `<runDir>/feature.md`, `docs/design/<feature>/variants.json`, `<label>/<screen>.html` with `.empty`, `.loading`, `.error` files, `gallery.html` |
 | *Gate* | | The gallery as a review page; the author picks a variant and asks for changes | `<runDir>/review.md` |
 | Refine | Kai, then Robin, then validator | Kai: the chosen variant at full fidelity with all states, and `spec.md`: screens, components, interactions, states, copy, accessibility notes, and a requirement-traceability table. Robin: an Acceptance section in `spec.md`, one check per screen against its PRD requirement | `docs/design/<feature>/chosen.html`, `docs/design/<feature>/spec.md` |
 
-Three agents per stage; one gate.
+Five agents in the variants stage (so the three variants are written in parallel and stay distinct), three in refine; one gate. Built 2026-10-01: `workflows/design-round.js` and `skills/design/SKILL.md`.
 
 **The documents.** `docs/design/<feature>/gallery.html` (contract §7.9), `chosen.html`, `spec.md` (contract §7.10).
 
