@@ -1169,7 +1169,7 @@ For Will (answered):
 
 Added after drill 6 (2026-10-01):
 
-9. **Which tier for River's rewrite and finalize stages? Answered: Fable** (Will, 2026-10-01). They stay on River's tier; about $8 per PRD is the accepted cost, and the remaining levers are turn counts, not models (`tests/drill/2026-10-01.md` in `ck`).
+9. **Which tier for River's rewrite and finalize stages? Answered: Fable** (Will, 2026-10-01). They stay on River's tier. In Will's words, a more costly PRD is fine because it is the most important step of a product kickoff; about $8 per PRD is the accepted cost, and the remaining levers are turn counts, not models (`tests/drill/2026-10-01.md` in `ck`).
 10. The panel inside `/ck:prd` has returned yes-if from every lens on three runs. Reword its question to force a stance before any other panel change.
 
 Harness unknowns the drill answers:
