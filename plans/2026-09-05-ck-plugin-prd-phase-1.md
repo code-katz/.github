@@ -90,7 +90,7 @@ The rebuild is based on Clare's learnings from running the current tool. Two thi
 **J1. Clare takes a new product from an idea to a definition.** The primary journey. Phase one is done when it works end to end on a new project.
 
 1. She has an idea. She creates a folder, opens Claude Code in it, and runs `/ck:next`. It sees an empty project and says: "Start with `/ck:opportunity` and describe your idea in a sentence. It writes `docs/opportunity.md`: what the product is, who it is for, what the market looks like, and whether it is worth doing."
-2. She runs `/ck:opportunity <her idea>`. River frames it, Toni writes the market context and positioning, Akira the technical shape, and the domain seat (a game designer, for a game) its own section. River assembles the analysis with stage gates, risks, and open questions. A review page opens. She comments where she disagrees and says "done". Claude applies every comment, republishes, and resolves each one with a line saying what changed. `docs/opportunity.md` is committed.
+2. She runs `/ck:opportunity <her idea>`. River frames it, Toni writes the market context and positioning, Akira the technical shape, and the domain seat (a game designer, for a game) its own section. River assembles the analysis with stage gates, risks, and open questions. A review page opens. She comments where she disagrees and says "done". Claude proposes a change for each comment, applies the ones she approves, and republishes. `docs/opportunity.md` is committed.
 3. `/ck:next` says: "Run `/ck:market-research` to go deeper on the market, or `/ck:brief` if the opportunity is enough." She picks. Each writes its document into `docs/`.
 4. `/ck:brief` writes the brief, with its own short market pass, and asks nothing. She reads it and edits or comments.
 5. `/ck:team` writes `docs/TEAM.md`: which personas are on this product, who owns which document and stage, and which seat is missing. She adjusts by comment.
@@ -103,7 +103,7 @@ The rebuild is based on Clare's learnings from running the current tool. Two thi
 1. In a project with a PRD and a brand guide, she runs `/ck:design <feature name>`.
 2. Kai reads the feature's requirements from `docs/PRD.md` and the brand guide, and produces a gallery: three labeled variants (A, B, C) of the feature's screens, each with its rationale and its trade-off.
 3. The gallery opens as a review page. She comments on the variant she wants, and on what to change.
-4. Claude applies the comments, produces the chosen variant at full fidelity with a written design spec, republishes, and resolves each comment.
+4. Claude proposes a change for each comment, applies the ones she approves, produces the chosen variant at full fidelity with a written design spec, and republishes.
 5. `docs/design/<feature>/` holds the gallery, the chosen variant, and the spec, committed. The next feature runs exactly the same way.
 
 **J3. Will runs a panel on a decision.** `/ck:panel <question>` with any context document. Three lenses on three models argue it; a memo shows where they disagree and leaves the decision to him. `docs/decisions/` holds the memo, committed.
@@ -351,22 +351,23 @@ Three failure classes and what the user sees:
 
 ### 4.9 Reviews: Claude's built-in review and comment system
 
-Will's rule, recorded 2026-09-05 and confirmed 2026-09-08: every document for review arrives as a page he can comment on; every design for review arrives as a gallery of labeled variants, side by side, that he can comment on. That page is how feedback is given. Claude holds every comment, then works through and resolves all of them once the reviewer says "done". The page is Claude's own review and comment system, in the Claude desktop app or at claude.ai; `ck` builds nothing of its own for this. [W]
+Will's rule, recorded 2026-09-05 and confirmed 2026-09-08: every document for review arrives as a page he can comment on; every design for review arrives as a gallery of labeled variants, side by side, that he can comment on. That page is how feedback is given. Claude holds every comment, proposes a change for each once the reviewer says "done", and applies the ones the reviewer approves. The page is Claude's own review and comment system, in the Claude desktop app or at claude.ai; `ck` builds nothing of its own for this. [W]
 
 Mechanism, verified in this session's tool contract: a published page is private to the account; viewers switch it to comment mode and leave threads on any passage or element; Claude reads the threads, replies on threads a person has sent to Claude, republishes the same URL, and marks each thread resolved.
 
-Every review page carries these five steps in its banner, because a page that says "comment anywhere" without them is a page nobody can comment on [R, 2026-09-08]:
+Every review page carries these four steps in its banner, because a page that says "comment anywhere" without them is a page nobody can comment on [R, 2026-09-08]:
 
 1. Open the link signed in to your Claude account.
 2. Switch the page to comment mode from the bar at the top.
-3. Click the passage or the variant and type.
-4. Put `@claude` in the comment so Claude can reply to it and resolve it.
-5. Say "done" in the chat when you have finished.
+3. Click the passage or the variant and type. Do not send the comment to Claude; your session reads it.
+4. Say "done" in your Claude Code session when you have finished.
+
+The third step changed on 2026-10-03, after the first real review (ck drill 21). A comment sent to Claude wakes a cloud session, not the local session that wrote the document, so two sessions ended up on one file: the cloud one changed the page, the local one changed the file, and each had to be told what the other did. Will runs locally and will keep running locally, so comments stay on the page and the local session reads them at "done".
 
 Rules:
 
 1. One page per review, republished in place; never a new URL for a revision.
-2. When the reviewer says "done", Claude reads every thread, applies each change to the file on disk (the document is the state, §4.3), republishes, and resolves each thread with one line saying what changed. A comment Claude will not act on gets a reply with the reason and stays open. A thread not sent to Claude is applied and reported in chat, because it cannot be replied to or resolved.
+2. When the reviewer says "done", Claude proposes before it changes anything: one numbered line per thread in chat, with the passage, the comment, and the change it proposes, or a question when the comment is ambiguous; the author answers by number; Claude applies only the approved changes to the file on disk (the document is the state, §4.3), republishes once, and reports what changed. The author resolves the threads on the page. Will's rule, 2026-10-03, after Claude applied three comments unasked and misread one of them: "you are automatically making assumptions and changes based on my comments instead of asking me questions and suggesting improvements".
 3. Document pages are built by `scripts/render-review.py` in one command, never by the session writing HTML: the document with a sticky table of contents, so a comment can point at a section. Drill 5c measured the hand-built page at about a third of a `/ck:prd` run's cost.
 4. Gallery pages show labeled variants (A, B, C) side by side, each with its rationale and trade-off, each commentable; the reviewer comments to pick one or ask for changes. Brand galleries and design galleries use one page shape (§7.8, §7.9).
 5. Availability, from the docs (Phase 0, S5): the Claude Code CLI 2.1.183 or later or the desktop app, signed in with `/login`, on a paid plan; reading comments needs 2.1.221 or later; replying on its own needs 2.1.228 or later; and comments are taken only on an artifact shared within a Team or Enterprise organization, so an account on a Pro or Max plan reviews by file edit. Every gate keeps that file-edit path: "Edit the file and run the command again; I'll pick up from your edits."
