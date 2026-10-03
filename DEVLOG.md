@@ -5,6 +5,155 @@ Auto-maintained via [claude-devlog-skill](https://github.com/code-katz/claude-de
 
 ---
 
+## [2026-10-01] `ck`: the whole phase-one pipeline built and drilled; every command measured
+
+### What happened
+
+The last five pipeline commands were built today on `code-katz/ck`, each on its own branch with a pull request: `/ck:opportunity`, `/ck:market-research`, and `/ck:roadmap` (merged), then `/ck:brand-guide` (PR #11) and `/ck:design` (PR #12, stacked on #11 because it needs the gallery renderer). Two fix PRs followed the drills: #10 (a revision is the smallest edit, not a rewrite) and #13 (team re-checks after a revision, a team word cap, housekeeping by one Bash line).
+
+Every command then ran end to end from a nested Claude Code on a fixture project, three runs at a time, with the galleries and review pages published. The numbers, for one complete document each, both passes where the command has a review gate:
+
+| Command | Measured | PRD estimate | Where the money went |
+|---|---|---|---|
+| `/ck:prd` (drill 6) | $8.05 | $2.30 | River's four Fable stages; accepted by Will |
+| `/ck:opportunity` (7) | $16.73 | $2.40 | Two validator-driven revisions on Fable, fixed in #10 |
+| `/ck:brand-guide` (8) | $7.82 | $2.50 | Opus writing SVG and HTML; nothing to cut |
+| `/ck:design` (9) | $10.32 | $1.20 | Kai writing a 59 KB page by hand; fixed on the branch |
+| `/ck:roadmap` (10) | $1.93 | $0.80 | As designed |
+| `/ck:team` (11) | $6.87 | $1.40 | A 4,100-word document; capped in #13 |
+| `/ck:architecture` (12) | $15.87 | $2.40 | Akira's 93k-token rewrite after the panel |
+| `/ck:market-research` (13) | about $12, cut before validation by a container restart | $1.20 | Toni's 82-turn write |
+
+The pattern across all of them: the estimates assumed a document is written once, and the measured runs show that revisions, rewrites, and hand-built pages cost more than the first draft. The fixes are all of one kind: write once, edit smallest, render pages from files, check after every pass that changes the document.
+
+### What it means for the PRD
+
+The pipeline exists and runs the way §6 describes it, with two shape changes recorded there: the brand and design galleries are rendered by a script from the authors' files (no model writes page chrome), and the design variants stage runs three Kai agents in parallel so the variants stay distinct. Appendix I carries the measured cost beside every estimate. The panel returned yes-if from all three lenses on both the PRD and the architecture; the question invites it, and open question 10 stands.
+
+### What is next
+
+Will merges the four open PRs in order (#10, #11, #12, #13). Then the re-measurements that the fixes promise (opportunity, design, team), the post-rewrite check for the architecture, the marketplace entry, and Clare's install.
+
+## [2026-09-09] `ck` Phase 0: six of eight spikes answered in one cloud session; the nested panel must be called by name
+
+**Category:** `milestone`
+**Tags:** `ck`, `phase-0`, `spikes`, `workflows`, `hooks`, `review-pages`
+**Risk Level:** `low`
+**Breaking Change:** `no`
+
+### Summary
+A throwaway `ck` plugin (two persona agents, two skills, two workflows, two hooks) was loaded into a nested Claude Code with `--plugin-dir` and driven non-interactively. Six of the eight Phase 0 spikes have answers; two need Will's or Clare's machine. Record: `plans/2026-09-09-ck-phase-0-spikes.md`.
+
+### Detail
+
+- **Answered yes:** `/ck:next` registers and `${CLAUDE_PLUGIN_ROOT}` expands (S1, this machine); a persona agent inside a workflow runs on its frontmatter model and a per-call `model` overrides it (S2); the `SubagentStart` hook fires for direct delegation and inside workflows, with `agent_type`, `agent_id`, `session_id`, `cwd` on stdin, and writes under `CLAUDE_PLUGIN_DATA` (S4); a neutral agent inside a nested workflow ran a real web search (S7); the extra `personas` key in `meta` loads; a plugin workflow is addressed by `name: "ck:<workflow>"`.
+- **One design change:** a nested workflow must be called by name, `workflow('ck:panel', args)`. Calling it by script path is refused when the plugin lives outside the working directory. The PRD's `draft.js`, `/ck:prd` skill, and §6.6 are updated.
+- **From the docs (S5):** review pages work in the CLI (2.1.183 or later) and the desktop app on any paid plan; comments need 2.1.221 or later and a Team or Enterprise organization. Clare's plan is the check.
+- **Still local:** the interactive consent prompt for a nested workflow (S3), a marketplace install on a second machine (S1), and Clare's CPU count (S8).
+
+### Decisions Made
+- **Nest by name, launch by name.** `workflow('ck:panel', args)` and `Workflow({ name: "ck:draft" })`; script paths are for development only.
+- **Check Clare's plan before the build.** Comments on review pages are gated by plan; the file-edit fallback stays specified at every gate.
+
+### Related
+- Drill log and the spike plugin: `plans/2026-09-09-ck-phase-0-spikes.md`, `plans/phase-0/ck-spike/`
+- PRD §8.0, §10.4, Appendix B and E updated: `plans/2026-09-05-ck-plugin-prd-phase-1.md`
+
+---
+
+## [2026-09-09] `ck` PRD revision 3 after Will's review: `ck` independent, the full definition pipeline in phase one, Fable tier restored, Workbench committed as phase three
+
+**Category:** `decision`
+**Tags:** `ck`, `prd`, `review`, `clare`, `pipeline`, `model-tiers`, `workbench`
+**Risk Level:** `medium`
+**Breaking Change:** `no`
+
+### Summary
+Will reviewed revision 2 of the `ck` phase-one PRD on its review page and left sixteen comments. Revision 3 is a rewrite, not a patch: the old team tool is out of the picture, Clare is the primary user with two named journeys, every path is written against `<project-repo>`, six judgment seats return to Fable 5.1, phase one grows from four commands to the whole product-definition pipeline plus a design step, the Workbench is committed as phase three, and every review goes through Claude's built-in comment system. Each comment and the decision it drove is recorded in PRD §3.4.
+
+### Detail
+
+- **`ck` is independent.** Every coexistence and retirement passage is gone. `ck` owns `profiles/` and `tiers.conf` after a one-time import; there is no vendored copy, lock, or sync script. Uninstalling the old tool is a prerequisite, with a `SessionStart` hook that warns in plain words while it remains.
+- **Clare, not "Will's wife".** Proficient with the current tool, runs many sessions at once, and her learnings drive the rebuild. Her failure mode is inconsistency, not error text. J1 (idea to definition) and J2 (feature to design mockups, the same way every time) are the acceptance journeys; efficiency (fewer sessions and hand-offs) is a goal with a measure.
+- **Phase one is the pipeline:** `/ck:opportunity`, `/ck:market-research`, `/ck:brief` (with a market pass), `/ck:prd`, `/ck:team` (roles and responsibilities), `/ck:roadmap`, `/ck:architecture`, `/ck:brand-guide` (proposals, finalists, guide; modelled on the NIGHTGRID process and the d20Mob guide), `/ck:design`, plus `/ck:panel`, `/ck:next`, and 21 persona switch commands. Ten document contracts. One drafting engine (`draft.js`) serves the PRD and the architecture document. Four scripts written in full; five to the stage level.
+- **Models:** Fable 5.1 for River, Akira, Morgan, Sage, Jordan, Reiner; Opus 5 for the eleven craft seats; Sonnet 5 for the four execution seats; Haiku for validators. The panel default is River on Fable, Toni on Opus, Kai moved down to Sonnet; the one override moves a lens down, never up.
+- **Reviews:** Claude's built-in review and comment system, in the desktop app or at claude.ai. Every review page carries the five how-to-comment steps in its banner, because the first one did not and could not be commented on.
+- **Phase two:** `/ck:feature` (explained; open for Will to pull forward), `/ck:bugfix`, `/ck:gtm`, Routines, `/ck:map`, `/ck:report`. **Phase three:** the Workbench, a rewrite replacing the conductor dashboard, local, never a hosted store.
+
+### Decisions Made
+- **Treat `ck` as a replacement, built independently; require the old tool's removal.** Will, 2026-09-08.
+- **Fable where judgment matters, Sonnet where volume matters.** Three persona tiers; stage tiers for research, validation, and synthesis.
+- **The document is the state, under `<project-repo>/docs/`.** The cache directory holds nothing a document depends on.
+- **The Workbench will be built** as phase three, after phase one has run on a real product.
+- **`/ck:feature` stays in phase two.** Will, 2026-09-09, after the PRD put the question to him: it consumes phase one's documents and would double the build.
+
+### Related
+- PRD revision 3: `plans/2026-09-05-ck-plugin-prd-phase-1.md` (§3.4 for the comment-by-comment record)
+- Panel memo, §8 added for the superseded items: `plans/2026-09-05-ck-prd-panel-memo.md`
+
+---
+
+## [2026-09-05] `ck` PRD revised after a cross-model panel: nine changes adopted, eleven rejected with reasons; review pages become the feedback channel
+
+**Category:** `decision`
+**Tags:** `ck`, `prd`, `panel`, `cross-model-review`, `user-2`, `review-pages`
+**Risk Level:** `medium`
+**Breaking Change:** `no`
+
+### Summary
+Will shared a PRD for the same plugin written by Opus, with a hand-run panel brief and five workbench mockups. Fable took the brief's engineering lens and verified the Opus PRD's load-bearing claims against the docs and the repos. Result: the `ck` PRD stays the base; nine changes are ported from the Opus PRD; eleven of its claims are rejected with the reason recorded. Will's new rule for feedback (review pages with comments; mockups as labeled variants) is written into the PRD. Record: `plans/2026-09-05-ck-prd-panel-memo.md`.
+
+### Detail
+
+- **Biggest finding against the `ck` PRD:** it named Will's wife as customer zero and then designed for Will (a ten-question interview, model names in a prompt, a hidden run directory). The Opus PRD made her the harder constraint. The `ck` PRD now has a users table, her journey, three failure rules (no stack trace, model name, or token count; always name the file holding the work; always one next action), and a done criterion: she produces a PRD on a new project without a text editor or `.ck/`.
+- **Shape changes:** `/ck:brief` added before `/ck:prd`; the interview is optional; the review is a page with comments or a file edit; documents live at fixed committed paths (`docs/brief.md`, `docs/PRD.md`, `docs/decisions/`); the run directory is a cache; workflows accept a start-at stage; `/ck:next` promoted to phase one; a Phase 0 of six spikes; each panel lens reads its own evidence and sees the author's rationale only after forming a view; effort is set per workflow stage, never per persona.
+- **Verified errors in the Opus PRD:** it says workflows cannot call workflows (they can, one level); it pauses a running workflow to ask about escalation (workflows accept no mid-run input, and its own principle P6 says so); its quota fallback hangs on a hook that fires only on a requested session model switch; its gates use the wrong hook for subagents; it retires team-cli at Phase 1 in one place and Phase 5 in another; it counts 22 personas (21); it retires `TODOS.md`, a shipped plugin; its workbench edits the installed plugin copy, which updates overwrite; it ignores conductor's existing cost parser.
+- **Panel health:** one lens ran, so no agreement rate. The memo follows the brief's format anyway so the gaps show.
+
+### Decisions Made
+- **Base document: the `ck` PRD.** Engineering-complete, verified, family-aware. Product thinking ported from Opus.
+- **The artifact is the state.** Fixed, conventional, committed paths; the plugin keeps nothing the deliverable depends on.
+- **Review pages are the feedback channel** (Will's rule). A private page with comments per review; Claude holds and resolves every comment after "done"; mockups as labeled variants side by side; a file-edit path always remains.
+- **`PreModelSwitch` arbitration: answered no.** Recorded as Phase 0 spike S6 with the docs citation, so it is not re-litigated.
+
+### Related
+- Panel memo: `plans/2026-09-05-ck-prd-panel-memo.md`
+- Opus inputs, verbatim: `plans/opus/`
+- Revised PRD: `plans/2026-09-05-ck-plugin-prd-phase-1.md`
+
+---
+
+## [2026-09-05] `ck` plugin phase-one PRD: gates in skills, spans in workflows, no UI yet
+
+**Category:** `decision`
+**Tags:** `ck`, `plugin`, `workflows`, `personas`, `prd`, `marketplace`
+**Risk Level:** `medium`
+**Breaking Change:** `no`
+
+### Summary
+Turned the 2026-09-05 agent-workflows research proposal into a phase-one PRD for a single code-katz plugin named `ck`: 21 persona subagents generated from team-cli profiles, `/ck:panel` (three lenses on three models) and `/ck:prd` (River-led, panel-challenged) end to end, one instrumentation hook, no UI. Both documents are committed under `plans/`.
+
+### Detail
+
+- **Proposal §8 resolved.** Q2 (granularity) decides the shape: a sign-off is a gate in a skill, the only place `AskUserQuestion` exists; each span between gates that needs fan-out is one plugin workflow; single-agent spans run inline. Docs quote: "For sign-off between stages, run each stage as its own workflow."
+- **Fifteen corrections to the proposal** are recorded in PRD §3.3. The load-bearing ones: the plugin must be named `ck` because the command prefix is the plugin name; §5.5 (each lens on a different model) contradicts §5.6 (River, Toni, Kai all on Opus 5) and is resolved by a per-invocation override in `panel.js` only; seven personas left unassigned in §5.6 are placed on Opus 5; `TaskCompleted` and `Stop` hook gates are replaced by in-workflow validation; `PreModelSwitch` does not cover subagent fallback; the roster is 21, not 22.
+- **Plugin, web app, wrapper, or dashboard:** plugin. `/workflows` is the run view. A phase-two `/ck:map` renders the catalog from workflow `meta`. A workbench, if ever, is local: the viewer may read from files, the editor must run the generator and tests before a commit. Never a hosted app with its own store of definitions.
+- **Harness facts** were verified against code.claude.com docs and the pricing page on 2026-09-05. Sonnet 5's scheduled price increase was cancelled, so $2/$10 stands.
+
+### Decisions Made
+- **Marketplace publishing superseded for `ck` only.** team-cli's 2026-07-31 retirement stands for team-cli. `ck` accepts the two-character prefix because workflows and subagents need no shell CLI, and `/akira`, `launch`, and `session` stay on team-cli's install path.
+- **Coexist, not retire.** `ck` is additive. Revisit at 90 days with the usage log the plugin ships.
+- **All 21 personas port now; prune on evidence.** Generated from a vendored, pinned copy of team-cli profiles with a drift test. `## Required Interactive Behaviors` is rewritten mechanically to output form, because a subagent cannot ask.
+- **Tiers change upstream first.** `tiers.conf` is the single source of truth. The §5.6 re-base is a prerequisite team-cli PR; `ck` copies the value verbatim.
+- **New repo `code-katz/ck`, one plugin per repo,** as the eighth marketplace entry.
+
+### Related
+- PRD: `plans/2026-09-05-ck-plugin-prd-phase-1.md`
+- Proposal: `plans/2026-09-05-agent-workflows-research-and-proposal.md`
+- team-cli `ROADMAP.md` revision history, 2026-07-29 and 2026-07-31 (superseded for `ck`)
+
+---
+
 ## [2026-03-22] Code Katz marketing plan fully executed: 20 blog posts, README overhauls, org infrastructure
 
 **Category:** `milestone`

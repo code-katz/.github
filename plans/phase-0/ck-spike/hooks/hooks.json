@@ -1,0 +1,11 @@
+{
+  "description": "ck spike: log SubagentStart stdin and env; log SessionStart env",
+  "hooks": {
+    "SubagentStart": [
+      { "matcher": "^ck:", "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/usage-log.sh\"" } ] }
+    ],
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/check-prereqs.sh\"" } ] }
+    ]
+  }
+}
