@@ -4,7 +4,7 @@
 > **Date:** 2026-09-08 (first version 2026-09-05)
 > **Author:** Fable (with Will Curran)
 > **Derives from:** [`plans/2026-09-05-agent-workflows-research-and-proposal.md`](2026-09-05-agent-workflows-research-and-proposal.md) (the research proposal)
-> **Scope:** phase one: the plugin skeleton, the full product-definition pipeline (`/ck:opportunity`, `/ck:market-research`, `/ck:brief`, `/ck:prd`, `/ck:team`, `/ck:roadmap`, `/ck:architecture`, `/ck:brand-guide`, `/ck:design`), `/ck:panel`, `/ck:next`, and 21 personas as subagents and switch commands on three model tiers. Phases two and three are in §10
+> **Scope:** phase one: the plugin skeleton, the full product-definition pipeline (`/ck:opportunity`, `/ck:market-research`, `/ck:brief`, `/ck:prd`, `/ck:team`, `/ck:roadmap`, `/ck:architecture`, `/ck:brand-guide`, `/ck:design`), `/ck:panel`, `/ck:next`, and the full persona roster as subagents and switch commands on three model tiers. Phases two and three are in §10
 > **Revision history:** rev 2 (2026-09-05) after a cross-model panel against the Opus-written PRD, see [`plans/2026-09-05-ck-prd-panel-memo.md`](2026-09-05-ck-prd-panel-memo.md); rev 3 (2026-09-08) after Will's sixteen-comment review of rev 2, see §3.4
 
 ---
@@ -50,8 +50,8 @@ The proposal is a research summary with a proposed shape. This is the specificat
 
 | Component | Count | What it is |
 |---|---|---|
-| Persona subagents | 21 | `agents/<name>.md`, generated from `ck/profiles/`, registered as `ck:<name>`, on three model tiers: Fable 5.1 for judgment, Opus 5 for craft, Sonnet 5 for execution (§5.3) |
-| Persona switch commands | 21 | `/ck:<name>`, generated from the same profiles, for the session-switch route that `claude-team-cli` used to provide (§5.6) |
+| Persona subagents | one per profile | `agents/<name>.md`, generated from `ck/profiles/`, registered as `ck:<name>`, on three model tiers: Fable 5.1 for judgment, Opus 5 for craft, Sonnet 5 for execution (§5.3) |
+| Persona switch commands | one per profile | `/ck:<name>`, generated from the same profiles, for the session-switch route that `claude-team-cli` used to provide (§5.6) |
 | Pipeline commands | 9 | `/ck:opportunity`, `/ck:market-research`, `/ck:brief`, `/ck:prd`, `/ck:team`, `/ck:roadmap`, `/ck:architecture`, `/ck:brand-guide`, `/ck:design`: the definition pipeline from an idea to a designed feature, each writing one committed document or gallery into `<project-repo>` (§6) |
 | Decision and navigation commands | 2 | `/ck:panel` (three lenses on three models argue one question; a memo shows where they disagree) and `/ck:next` (says what to run next in one sentence) |
 | Document contracts | 10 | One skill per document type: section order, required fields, checklist. Consistency comes from these, not from who writes (§7) |
@@ -127,7 +127,7 @@ Leading indicator: usage-log entries in the first week. A panel that always agre
 - No `/ck:feature`, `/ck:bugfix`, or `/ck:gtm`. They need the definition pipeline's documents as inputs and are phase two (§10.2). Will confirmed `/ck:feature` stays there [W, 2026-09-09].
 - No UI. `/workflows` is the run view in phase one [D]. The Workbench is phase three (§10.3).
 - No hook-enforced document gates, no model fallback chain, no Advisor tool, no Routines, no mid-run arbitration (workflows cannot pause; §4.2).
-- No persona pruning. All 21 ship; the instrument ships; the cut list follows the data.
+- No persona pruning. The full roster ships; the instrument ships; the cut list follows the data.
 - No compatibility with, migration from, or reference to `claude-team-cli` beyond the one-time import of its profiles (§5.1) and the uninstall prerequisite (§8.4).
 
 ---
@@ -150,7 +150,7 @@ Leading indicator: usage-log entries in the first week. A panel that always agre
 | 1 | Retire or coexist with the old tool? | **Neither is a consideration.** `ck` is a replacement, built independently. The old tool must be uninstalled before `ck` is used (§8.4). What it did that must not be lost (persona switch, "who should be on this", parallel work) is carried by `ck` itself (§5.6, §6.5, §10.2) | [W, 2026-09-08] |
 | 2 | Workflow granularity vs sign-off | **The skill owns the gates; each span between gates that needs fan-out or verification is one workflow; a single-agent span runs inline via the Agent tool.** Full rule: §4.2 | [D]-backed |
 | 3 | Where documents live | **The document is the state.** Every deliverable lives at a fixed, conventional, committed path under `<project-repo>` (§4.3). `.ck/runs/<run-id>/` is a cache; nothing depends on it | [W, 2026-09-08], [P] |
-| 4 | Which personas survive? | **All 21 ship; prune at 90 days on evidence.** Generation makes carrying 21 free. No usage data exists, so a cut list today is a guess. The instrument ships in phase one (§5.5). Agrees with proposal §7, contradicts §8.4 | [P] |
+| 4 | Which personas survive? | **The full roster ships; prune at 90 days on evidence.** Generation makes carrying every persona free. No usage data exists, so a cut list today is a guess. The instrument ships in phase one (§5.5). Agrees with proposal §7, contradicts §8.4 | [P] |
 | 5 | Panel model assignment | **River on Fable 5.1, Toni on Opus 5, Kai on Sonnet 5 by default.** River and Toni run on their own tiers; only Kai is moved, downward, so that three lenses are three models. Overridable per run. The memo header states the limitation: one training pipeline, partial decorrelation | [W, 2026-09-08] for the tiers; [P] for the assignment |
 | 6 | `/ck:feature` scope | **Phase two.** Will confirmed the placement on 2026-09-09 (§10.2). The two scope options (full end-to-end with content, or code-only) stay open until `feature.js` is designed | [W, 2026-09-09] |
 | 7 | Routines | **Phase two.** One constraint carried into phase one: every pure workflow (`panel`, `market-research`, `brief`, `team`, `roadmap`) is runnable headless. `market-research` is the first candidate for a schedule | deferred |
@@ -209,7 +209,7 @@ The earlier cross-model review (2026-09-05, against the PRD Opus wrote from the 
 | Layer | Primitive | Owns | Phase-one instance |
 |---|---|---|---|
 | Workflow | `workflows/*.js` | The order of stages, outside the conversation | `panel`, `brief`, `draft`, `team`, `opportunity`, `market-research`, `roadmap`, `brand`, `design` |
-| Persona | `agents/*.md` | Voice, domain constraints, default model tier | 21 generated files, `ck:<name>` |
+| Persona | `agents/*.md` | Voice, domain constraints, default model tier | one generated file per profile, `ck:<name>` |
 | Contract | `skills/<document>-artifact/SKILL.md` | Section order, required fields, checklist for one document type | 10 contracts (§7) |
 | Gate | The skill in the main session | Sign-off: a review page with comments, or a file edit; plus schema-forced output and a validator agent inside the workflow | `opportunity`, `prd`, `architecture`, `brand-guide`, `design` skills; the validators in every workflow |
 
@@ -456,7 +456,7 @@ Fable 5.1 rather than Fable 5: same price [D], newer generation. Full model IDs 
 
 ### 5.4 The interactive-behavior rewrite
 
-Every profile has a `## Required Interactive Behaviors` section written as questions to the user (River: Three Whys, V0 Challenge, Premortem). A subagent cannot ask [D]. The transform is mechanical, identical for all 21 personas, and adds no per-persona prose:
+Every profile has a `## Required Interactive Behaviors` section written as questions to the user (River: Three Whys, V0 Challenge, Premortem). A subagent cannot ask [D]. The transform is mechanical, identical for every persona, and adds no per-persona prose:
 
 1. Rename the heading to `## Required Behaviors (subagent form)`.
 2. Insert directly under it:
@@ -522,7 +522,7 @@ The fourth route the old tool offered, a separate terminal session per persona, 
 
 ### 5.7 Acceptance criteria
 
-- [ ] `agents/` and `skills/<name>/` each hold exactly one file per `profiles/*.md` (21 today); `profiles/ROSTER.md` has 21 rows.
+- [ ] `agents/` and `skills/<name>/` each hold exactly one file per `profiles/*.md`; `profiles/ROSTER.md` has one row per profile.
 - [ ] Every agent's `model:` equals its `tiers.conf` line; `name:` equals the filename and contains no colon; `## Handoff Brief` present; `## Greeting` absent; the §5.4 preamble present; no `effort:` line.
 - [ ] Every switch skill carries `## Required Interactive Behaviors` and `## Greeting` verbatim from its profile, and the prepended sentence.
 - [ ] Regenerating from `profiles/` produces no diff against the committed generated files.
@@ -654,7 +654,7 @@ Three to four agents. About two minutes.
 
 **Cast and models.** River (Fable 5.1) nominates and assembles. Each nominated persona confirms on its own tier at `effort: 'low'`. Haiku 4.5 validates.
 
-**Stages** (`workflows/team.js`, Appendix D, `meta.personas: [all 21]`):
+**Stages** (`workflows/team.js`, Appendix D, `meta.personas: [every persona]`):
 
 | Phase | Agents | What happens | Writes |
 |---|---|---|---|
@@ -1009,12 +1009,12 @@ ck/
 ├── .claude-plugin/plugin.json
 ├── README.md  DEVLOG.md  ROADMAP.md  LICENSE
 ├── profiles/                     the source of truth for personas (§5.1)
-│   ├── <21 personas>.md
+│   ├── <one per persona>.md
 │   └── ROSTER.md                 generated
 ├── tiers.conf                    persona → model (§5.3)
-├── agents/<21>.md                generated subagents (§5.2)
+├── agents/<one per persona>.md   generated subagents (§5.2)
 ├── skills/
-│   ├── <21 personas>/SKILL.md    generated switch commands (§5.6)
+│   ├── <one per persona>/SKILL.md generated switch commands (§5.6)
 │   ├── opportunity/SKILL.md      /ck:opportunity (gate owner)
 │   ├── prd/SKILL.md              /ck:prd (Appendix E)
 │   ├── architecture/SKILL.md     /ck:architecture
@@ -1055,7 +1055,7 @@ A project that uses the plugin gains the documents in §4.3 (committed) and `.ck
 ```json
 {
   "name": "ck",
-  "description": "Code Katz personas and workflows for Claude Code: the product-definition pipeline (/ck:opportunity, market-research, brief, prd, team, roadmap, architecture, brand-guide, design), /ck:panel (three lenses on three models), /ck:next, and 21 personas as ck:<name> subagents and /ck:<name> switch commands.",
+  "description": "Code Katz personas and workflows for Claude Code: the product-definition pipeline (/ck:opportunity, market-research, brief, prd, team, roadmap, architecture, brand-guide, design), /ck:panel (three lenses on three models), /ck:next, and the full persona roster, a complete cross-domain team, as ck:<name> subagents and /ck:<name> switch commands.",
   "version": "0.1.0",
   "author": { "name": "Code Katz" }
 }
@@ -1071,7 +1071,7 @@ Appended to `claude-plugins/.claude-plugin/marketplace.json` (bumping its `metad
 {
   "name": "ck",
   "source": { "source": "github", "repo": "code-katz/ck" },
-  "description": "Code Katz personas and workflows: the product-definition pipeline from idea to designed feature, /ck:panel (three lenses on three models), /ck:next, and 21 personas as subagents and switch commands. Phase one of the code-katz plugin.",
+  "description": "Code Katz personas and workflows: the product-definition pipeline from idea to designed feature, /ck:panel (three lenses on three models), /ck:next, and the full persona roster as subagents and switch commands. Phase one of the code-katz plugin.",
   "category": "workflow",
   "keywords": ["workflows", "personas", "prd", "brief", "panel", "brand", "design", "subagents"]
 }
@@ -1106,10 +1106,10 @@ Install: `/plugin marketplace add code-katz/claude-plugins` then `/plugin instal
 | # | Test | Type |
 |---|---|---|
 | 1 | `plugin.json` parses; `name` is `ck`; `version` matches a semver | static |
-| 2 | Regenerate `agents/`, the 21 switch skills, and `ROSTER.md` from `profiles/` into scratch; `diff -q` each against the committed copy; fail listing stale names | drift |
+| 2 | Regenerate `agents/`, the switch skills, and `ROSTER.md` from `profiles/` into scratch; `diff -q` each against the committed copy; fail listing stale names | drift |
 | 3 | Agent count, switch-skill count, and `ROSTER.md` row count each equal the profile count | drift |
 | 4 | Per agent: `model:` equals the `tiers.conf` line; `name:` equals the filename, no colon; `## Handoff Brief` present; `## Greeting` absent; the §5.4 preamble sentence present; no `effort:` line. Per switch skill: `## Required Interactive Behaviors` and `## Greeting` present verbatim; the prepended sentence present | drift |
-| 5 | `tiers.conf` has exactly 21 lines, each `<name> <model>`, every name has a profile, every model is one of the three tier IDs; six Fable, eleven Opus, four Sonnet | tiers |
+| 5 | `tiers.conf` has one line per profile, each `<name> <model>`, every name has a profile, every model is one of the three tier IDs; the judgment seats on Fable, the craft seats on Opus, the execution seats on Sonnet | tiers |
 | 6 | `skills/prd/SKILL.md` and `skills/river/SKILL.md` contain the three `### N. <name>` headings from `profiles/river.md` | contract |
 | 7 | For every contract skill, the section list in the contract equals the section list in the Draft prompt of the workflow that writes it (parsed from the `sections` constant each script declares) | contract |
 | 8 | Every gate-owning skill references `skills/review-page/SKILL.md` and none restates the five steps | contract |
@@ -1129,7 +1129,7 @@ Install: `/plugin marketplace add code-katz/claude-plugins` then `/plugin instal
 
 ### 10.1 Phase one: this document
 
-The plugin skeleton; 21 personas as subagents and switch commands on three tiers; the nine pipeline commands; `/ck:panel`; `/ck:next`; ten contracts; two hooks; the test suite; the marketplace entry. Done when J1 and J2 run end to end on a real project (§2.3) and Phase 0 has answers for S1 to S8.
+The plugin skeleton; the full persona roster as subagents and switch commands on three tiers; the nine pipeline commands; `/ck:panel`; `/ck:next`; ten contracts; two hooks; the test suite; the marketplace entry. Done when J1 and J2 run end to end on a real project (§2.3) and Phase 0 has answers for S1 to S8.
 
 ### 10.2 Phase two: building, scheduling, and seeing
 
@@ -1194,7 +1194,7 @@ Harness unknowns the drill answers:
 | An API error nulls a lens | Medium | Memo on two lenses | Logged; memo header says so; re-run offered; a lens can be re-modelled per run |
 | Fable on the judgment seats dominates cost | Certain | River's stages are the largest line in every pipeline run (Appendix I) | It is the decision Will made (§3.3 item 3); the cost is stated per command; a tier is one line in `tiers.conf` |
 | Persona text drifts between `profiles/` and the generated files | Low | A switch command and a subagent disagree | Test 2; the generator refuses a dirty tree |
-| 21 personas is 15 too many | Likely (proposal §7) | Maintenance and choice paralysis | Generated, so carrying cost is near zero; `usage.jsonl`; prune at 90 days |
+| The roster is far larger than the work needs | Likely (proposal §7) | Maintenance and choice paralysis | Generated, so carrying cost is near zero; `usage.jsonl`; prune at 90 days |
 | The 4.7-and-later tokenizer produces about 30% more tokens [D] | Certain | Appendix I underestimates by up to 30% | Stated in Appendix I; `/workflows` shows real token totals |
 | Compaction during the optional interview | Medium on long interviews | Lost answers | Append-as-you-go and the resume check (§4.3) |
 | Galleries exceed the 16 MB page limit | Low for SVG; real if raster assets creep in | A gallery cannot be published | The gallery contract forbids external and raster assets; the validator checks size |
