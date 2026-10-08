@@ -53,7 +53,7 @@ The proposal is a research summary with a proposed shape. This is the specificat
 | Persona subagents | one per profile | `agents/<name>.md`, generated from `ck/profiles/`, registered as `ck:<name>`, on three model tiers: Fable 5.1 for judgment, Opus 5 for craft, Sonnet 5 for execution (§5.3) |
 | Persona switch commands | one per profile | `/ck:<name>`, generated from the same profiles, for the session-switch route that `claude-team-cli` used to provide (§5.6) |
 | Pipeline commands | 9 | `/ck:opportunity`, `/ck:market-research`, `/ck:brief`, `/ck:prd`, `/ck:team`, `/ck:roadmap`, `/ck:architecture`, `/ck:brand-guide`, `/ck:design`: the definition pipeline from an idea to a designed feature, each writing one committed document or gallery into `<project-repo>` (§6) |
-| Decision and navigation commands | 2 | `/ck:panel` (three lenses on three models argue one question; a memo shows where they disagree) and `/ck:next` (says what to run next in one sentence) |
+| Decision and navigation commands | 2 | `/ck:panel` (three lenses on three models argue one question; a memo shows where they disagree) and `/ck:next` (shows the pipeline as a table with each step's status in this project, then says what to run next in one sentence) |
 | Document contracts | 10 | One skill per document type: section order, required fields, checklist. Consistency comes from these, not from who writes (§7) |
 | Workflow scripts | 9 | `panel`, `brief`, `draft` (serves the PRD and the architecture document), `team`, `opportunity`, `market-research`, `roadmap`, `brand`, `design` |
 | Hooks | 2 | `SubagentStart` on `^ck:` appending one line per persona invocation to a usage log; `SessionStart` warning in plain words if `claude-team-cli` is still installed |
@@ -89,9 +89,9 @@ The rebuild is based on Clare's learnings from running the current tool. Two thi
 
 **J1. Clare takes a new product from an idea to a definition.** The primary journey. Phase one is done when it works end to end on a new project.
 
-1. She has an idea. She creates a folder, opens Claude Code in it, and runs `/ck:next`. It sees an empty project and says: "Start with `/ck:opportunity` and describe your idea in a sentence. It writes `docs/opportunity.md`: what the product is, who it is for, what the market looks like, and whether it is worth doing."
+1. She has an idea. She creates a folder, opens Claude Code in it, and runs `/ck:next`. It sees an empty project, shows the pipeline as a table with every step not started, and says: "Start with `/ck:opportunity` and describe your idea in a sentence. It writes `docs/opportunity.md`: what the product is, who it is for, what the market looks like, and whether it is worth doing."
 2. She runs `/ck:opportunity <her idea>`. River frames it, Toni writes the market context and positioning, Akira the technical shape, and the domain seat (a game designer, for a game) its own section. River assembles the analysis with stage gates, risks, and open questions. A review page opens. She comments where she disagrees and says "done". Claude proposes a change for each comment, applies the ones she approves, and republishes. `docs/opportunity.md` is committed.
-3. `/ck:next` says: "Run `/ck:market-research` to go deeper on the market, or `/ck:brief` if the opportunity is enough." She picks. Each writes its document into `docs/`.
+3. The command closes with the pipeline table, the opportunity analysis now marked done, and one sentence under it: "Run `/ck:market-research` to go deeper on the market, or `/ck:brief` if the opportunity is enough." She picks. Each writes its document into `docs/`.
 4. `/ck:brief` writes the brief, with its own short market pass, and asks nothing. She reads it and edits or comments.
 5. `/ck:team` writes `docs/TEAM.md`: which personas are on this product, who owns which document and stage, and which seat is missing. She adjusts by comment.
 6. `/ck:prd` drafts the requirements, checks them, has three specialists argue about them on three different models, and rewrites. The review page carries one question at the top: "Imagine this shipped and did not move the number. What went wrong?" She answers in a comment. Claude finalizes `docs/PRD.md`.
@@ -339,6 +339,8 @@ Adapted from the Opus PRD §7.11. Clare is proficient, so this is house style ra
 2. Always name the file that holds the work completed so far.
 3. Always give exactly one next action.
 
+Since 2026-10-07 (ck 0.1.9) the closing message of every pipeline command, and `/ck:next`, show the pipeline table before that one action (§6.12). The table says where the product stands; it is not something to do, so rule 3 is unchanged.
+
 Model names and costs may appear once, in the closing line of a run ("Three reviewers on three models; about $0.80"), never as a choice the user must make to proceed. Will's escape hatch: `/workflows` shows every agent, model, and token count.
 
 Three failure classes and what the user sees:
@@ -536,7 +538,7 @@ The fourth route the old tool offered, a separate terminal session per persona, 
 
 ### 6.1 Order, inputs, and outputs
 
-Each command runs when its required inputs exist in `<project-repo>` and names the missing one in a sentence when they do not. Optional inputs are read when present and skipped when absent. The order below is the order `/ck:next` recommends; any command can run on its own.
+Each command runs when its required inputs exist in `<project-repo>` and names the missing one in a sentence when they do not. Optional inputs are read when present and skipped when absent. The order below is the order `/ck:next` shows as a table and recommends (§6.12); any command can run on its own.
 
 | Step | Command | Requires | Reads if present | Writes | Gate |
 |---|---|---|---|---|---|
@@ -550,7 +552,7 @@ Each command runs when its required inputs exist in `<project-repo>` and names t
 | 8 | `/ck:brand-guide` | `docs/opportunity.md` or `docs/brief.md` | `docs/PRD.md`, `docs/market-research.md` | `brand/`, `docs/decisions/<ts>-brand-direction.md`, `docs/brand-guide.md` | Two gallery pages |
 | 9 | `/ck:design <feature>` | `docs/PRD.md` | `docs/brand-guide.md`, `brand/final/`, `docs/ARCHITECTURE.md` | `docs/design/<feature>/` | Gallery page |
 | any | `/ck:panel <question>` | A question | Anything named as context | `docs/decisions/<ts>-<slug>.md` | None |
-| any | `/ck:next` | Nothing | The table above | Nothing | None |
+| any | `/ck:next` | Nothing | The documents above and the run records under `.ck/runs/` | Nothing | None |
 
 Every subsection below has the same parts: purpose, invocation, cast and models, stages, the document, the gate, cost, acceptance. Stages are given as the `meta.phases` of the script. Four scripts are written in full in the appendices (`panel`, `brief`, `draft`, `team`); the other five are specified here to the stage level and follow the same conventions (required args, `startAt`, null-tolerant stages, a validator, the document path returned in the schema).
 
@@ -702,7 +704,7 @@ Seven agents without a revision, up to nine with two. If the nested panel throws
 
 **The gate.** The review page (§4.9) with the premortem question at the top. On "done": every comment applied to `docs/PRD.md` (or answered with a reason), the page republished, each thread resolved with one line. File-edit fallback: "Open `docs/PRD.md`, change anything, save, and run `/ck:prd` again; I'll fold your edits in." Either path may trigger a focused re-run of the panel on named sections before finalizing.
 
-**Finalize.** One agent, inline (§4.2): `ck:river` folds the premortem answer into Assumptions and Risks, resolves each open decision as answered, keeps Appendix A intact, checks the result against the contract, writes `docs/PRD.md`, sets `status: final` in `run.json`. The skill prints the path and one next action: "Run `/ck:next`."
+**Finalize.** One agent, inline (§4.2): `ck:river` folds the premortem answer into Assumptions and Risks, resolves each open decision as answered, keeps Appendix A intact, checks the result against the contract, writes `docs/PRD.md`, sets `status: final` in `run.json`. The skill prints the path and closes with the pipeline table and its one next action (§6.12).
 
 **Cost.** About $2.30 per run without a revision, about $2.90 with one, plus the main session's turns (Appendix I).
 
@@ -894,22 +896,46 @@ The synthesis agent is neutral and holds no lens. It never averages positions or
 
 ### 6.12 `/ck:next`
 
-A skill (`skills/next/SKILL.md`, Appendix F). It looks at which documents in §6.1 exist and at the latest `run.json`, and says one thing in plain words:
+A skill (`skills/next/SKILL.md`, Appendix F). It looks at which documents in §6.1 exist and at the run records under `.ck/runs/`, shows the pipeline as a table, and says one thing under it in plain words.
+
+**The table.** One row per step in §6.1's order, then the panel as "any". Five columns: the sequence number; the step and its command; one sentence on what the step does; the document it writes; the status in this project. The status is the first of these that applies:
+
+| Status | When |
+|---|---|
+| `running` | This session launched the step's run and has not yet had its notification |
+| `in review` | The last run record for the step's command has a `status` that starts with `review` |
+| `stopped partway` | The last run record for the step's command has any other `status` except `final` |
+| `done` | The step's document exists |
+| `next` | The sentence under the table names the step |
+| `skipped` | The step is 1 or 2, it has no document, and a later step has one |
+| `not started` | Everything else |
+
+`/ck:design` is per feature: each finished feature and each one waiting for review is named. The panel's status is always "any time". One line under the table says that no step writes a go-to-market plan or a marketing brief yet and that the marketing thinking is in steps 1, 2, 3, and 8; `/ck:gtm` is phase two (§10.2).
+
+The skill reads the project with three commands that hold no file pattern for the shell to expand (`ls`, `find`, and `grep -r` over the `run.json` files), so they run as written under zsh and bash and print nothing in an empty project. A folder under `.ck/runs/` with no `run.json` is not a record.
+
+**The sentence.** Under the table, the first line that applies:
 
 | State | It says |
 |---|---|
-| Nothing in `docs/` | "Start with `/ck:opportunity` and describe your idea in a sentence. It writes `docs/opportunity.md`: what the product is, who it is for, what the market looks like, and whether it is worth doing." |
-| Opportunity, nothing else | "Run `/ck:market-research` to go deeper on the market, or `/ck:brief` if the opportunity is enough to start from." |
+| This session is still waiting on a run it launched | "Your [document] is still being written. I'll tell you when it's ready." |
+| The newest run record is in review | "Your [document] is waiting for your review. Open the review page or `docs/<file>`, then say done or run `/ck:<command>` again." |
+| The newest run record stopped partway | "Your [document] stopped partway. Everything so far is in `docs/<file>`. Run `/ck:<command>` again to continue." |
+| No opportunity analysis and no brief | "Start with `/ck:opportunity` and describe your idea in a sentence. It writes `docs/opportunity.md`: what the product is, who it is for, what the market looks like, and whether it is worth doing." |
+| Opportunity, no market research, no brief | "Run `/ck:market-research` to go deeper on the market, or `/ck:brief` if the opportunity is enough to start from." |
+| Opportunity and market research, no brief | "Run `/ck:brief`. It starts from your opportunity analysis and writes `docs/brief.md`." |
 | Brief, no team | "Run `/ck:team`. It decides who is on this product and who owns what, and writes `docs/TEAM.md`." |
 | Brief and team, no PRD | "Run `/ck:prd`. It turns the brief into full requirements and takes a few minutes." |
-| A document waiting for review (`run.json` says `review`) | "Your [document] is waiting for your review. Open the review page or `docs/<file>`, then say done or run the command again." |
-| A stopped stage | "Your [document] stopped partway. Everything so far is in `docs/<file>`. Run the command again to continue." |
 | PRD, no roadmap | "Run `/ck:roadmap`. It orders the work and writes `ROADMAP.md`." |
 | Roadmap, no architecture | "Run `/ck:architecture`. It recommends how to build it and writes `docs/ARCHITECTURE.md`." |
 | Architecture, no brand guide | "Run `/ck:brand-guide`. It takes two rounds of your review and writes the brand guide and assets." |
 | Everything above | "The definition is complete. Run `/ck:design <feature>` for any feature in the PRD, or `/ck:panel <question>` for a decision. Building features is the next release of ck." |
 
 No token counts, no more than one action. It runs in the main session with no agents.
+
+**Every gate-owning skill closes with it.** The last step of each pipeline command says its finished sentence, then shows the same table and sentence by reading `skills/next/SKILL.md`. None restates the table, and none sends the reader to `/ck:next` to learn what to type.
+
+The table was added on 2026-10-07 (ck 0.1.9). On a real product, after `/ck:opportunity` and `/ck:brief`, Will had to ask what came after the team step, whether the PRD was next, and whether there was a marketing brief: one sentence did not give him the map [W, 2026-10-07]. Until then this section said "says one thing"; it now says "shows the table, then says one thing". The half of the rule that protects the reader, no more than one action, stands: a table of where the product stands is not an action (§4.8). A separate `/ck:status` was considered and rejected: every closing message and the README already send the reader to `/ck:next`, and a second command would have to be discovered at the moment the reader does not know what to type. `running` is in the list because a run still in flight would otherwise read `stopped partway` with "run the command again", which starts a second run.
 
 ---
 
@@ -1120,6 +1146,7 @@ Install: `/plugin marketplace add code-katz/claude-plugins` then `/plugin instal
 | 13 | End-to-end drill, by hand, on both fixture projects and then on one real project: the full J1 order (§6.1), then `/ck:design` on one requirement, then `/ck:panel`; a stop during a Panel phase followed by a resume. Record the consent prompts, the files under `docs/`, `brand/`, and `.ck/runs/<id>/`, the models shown in `/workflows`, and every message the skills printed. The drill log is committed under `tests/drill/<date>.md` | e2e |
 | 14 | The J1 and J2 drills: Clare runs them on a fresh project from the README alone; every message she sees is checked against §4.8's three rules; the number of sessions and hand-offs J2 took is recorded against G5 | user |
 | 15 | Consistency: two projects' documents of each type have identical heading lists (G1) | contract |
+| 16 | `skills/next/SKILL.md` holds the pipeline table: one row per step in §6.1's order and the panel; one sentence per step; every path it names is in the README's table of paths; the seven statuses in the order they are tried; a sentence names every step's command. Its three commands, run as written under bash and zsh, print nothing in an empty project and list a fixture's documents, designs, and run records oldest first. Every gate-owning skill closes per `skills/next/SKILL.md`, and none restates the table or says "Next: run `/ck:next`" (section 17 of `tests/run.sh`) | contract |
 
 `claude plugin eval` is early access and not enabled today; when it is, the drills become an eval suite and tests 13 to 15 stop being manual.
 
@@ -2225,7 +2252,7 @@ Agent({
 })
 ```
 
-Say: "Your PRD is finished: `docs/PRD.md`. Next: run `/ck:next`." If the devlog skill is installed, add that `/devlog` can record the reviewers' memo from `docs/decisions/`.
+Say: "Your PRD is finished: `docs/PRD.md`." If the devlog skill is installed, add that `/devlog` can record the reviewers' memo from `docs/decisions/`. Then close per `${CLAUDE_PLUGIN_ROOT}/skills/next/SKILL.md`: the pipeline table with this project's status, and the one next action under it.
 ````
 
 ## Appendix F. `skills/next/SKILL.md`
@@ -2233,22 +2260,69 @@ Say: "Your PRD is finished: `docs/PRD.md`. Next: run `/ck:next`." If the devlog 
 ````markdown
 ---
 name: next
-description: Says what to run next, in one sentence, by looking at which documents exist. Use when you do not know where to start or what comes after the step you just finished.
+description: Shows the whole product-definition pipeline as a table (each step in order, what it does, the document it writes, and where this project stands), then says what to run next in one sentence. Use when you do not know where to start, what the steps are, or what comes after the step you just finished.
 disable-model-invocation: true
 ---
 
-Look at the project and say exactly one thing. Plain words. No token counts, no more than one action.
+Look at the project, show the table, then say exactly one thing under it. Plain words. No token counts, no more than one action.
 
-Check, in this order, in the repository Claude Code was opened in: the latest `.ck/runs/*/run.json` (its `command` and `status`); then whether each of these exists: `docs/opportunity.md`, `docs/market-research.md`, `docs/brief.md`, `docs/TEAM.md`, `docs/PRD.md`, `ROADMAP.md`, `docs/ARCHITECTURE.md`, `docs/brand-guide.md`.
+## 1. Look
 
-Then say the first line that applies:
+Run this in the repository Claude Code was opened in, exactly as written, and trust its output over any other listing:
+
+```bash
+ls docs/opportunity.md docs/market-research.md docs/brief.md docs/TEAM.md docs/PRD.md ROADMAP.md docs/ARCHITECTURE.md docs/brand-guide.md 2>/dev/null
+find docs/design -maxdepth 2 \( -name gallery.html -o -name spec.md \) 2>/dev/null
+grep -rHoE --include=run.json '"(command|status)" *: *"[^"]*"' .ck/runs 2>/dev/null | sort
+```
+
+The first line lists the documents that exist. The second lists the designs: a feature folder with `spec.md` is finished, and one with only `gallery.html` is waiting for its review. The third lists every run record, oldest first, so the last record for a command is the one that counts. A folder under `.ck/runs/` with no `run.json` is not a record.
+
+## 2. The table
+
+Print this table with the Status column filled in for this project. Keep the columns, the order of the rows, and the wording of the first four columns.
+
+| # | Step | What it does | Writes | Status |
+|---|---|---|---|---|
+| 1 | Opportunity: `/ck:opportunity <idea>` | Says what the product is, who it is for, what the market looks like, and whether it is worth doing. | `docs/opportunity.md` | |
+| 2 | Market research, optional: `/ck:market-research` | Goes deeper on the market from the web, with a source for every claim. | `docs/market-research.md` | |
+| 3 | Brief: `/ck:brief` | Names the problem, the user, the number that should move, and a smaller first version, after a short look at comparable products. | `docs/brief.md` | |
+| 4 | Team: `/ck:team` | Decides who is on this product, who owns what, and which seat is missing. | `docs/TEAM.md` | |
+| 5 | PRD: `/ck:prd` | Turns the brief into full requirements. | `docs/PRD.md` | |
+| 6 | Roadmap: `/ck:roadmap` | Sorts the requirements into three tiers and puts them in the order to build. | `ROADMAP.md` | |
+| 7 | Architecture: `/ck:architecture` | Recommends how to build it, with the alternatives it turned down. | `docs/ARCHITECTURE.md` | |
+| 8 | Brand guide: `/ck:brand-guide` | Builds the brand identity (mark, colors, type) over two rounds of your picks, and writes the guide and the assets. | `docs/brand-guide.md`, `brand/` | |
+| 9 | Design, once per feature: `/ck:design <feature>` | Draws three variants of one feature's screens, then finishes the one you pick with a design spec. | `docs/design/<feature>/` | |
+| any | Panel: `/ck:panel <question>` | Three specialists argue one question, and a memo shows where they disagree. | `docs/decisions/` | |
+
+Fill Status with the first of these that applies to the row:
+
+| Status | When |
+|---|---|
+| `running` | This session launched the step's run and has not yet had its notification. |
+| `in review` | The last run record for the step's command has a `status` that starts with `review`. |
+| `stopped partway` | The last run record for the step's command has any other `status` except `final`. |
+| `done` | The step's document exists. |
+| `next` | The sentence in section 3 names the step. |
+| `skipped` | The step is 1 or 2, it has no document, and a later step has one. |
+| `not started` | Everything else. |
+
+A step's command is the word after `/ck:` in its row; a run record's `command` is the same word. Row 9 is per feature: name each finished feature and each one waiting for review ("done: checkout; in review: onboarding"), and with no design folder use `next` or `not started`. The panel row's status is always `any time`.
+
+Under the table, print this line as it is: "No step writes a go-to-market plan or a marketing brief yet. The marketing thinking is in steps 1, 2, 3, and 8; a go-to-market plan comes in a later release of ck."
+
+## 3. The one thing to say
+
+Then say the first line that applies. "The newest run record" is the last one the third line of the look printed, whatever its command.
 
 | State | Say |
 |---|---|
-| `run.json` says `review` | "Your [document] is waiting for your review. Open the review page or `docs/<file>`, then say done or run `/ck:<command>` again." |
-| `run.json` names a stopped stage | "Your [document] stopped partway. Everything so far is in `docs/<file>`. Run `/ck:<command>` again to continue." |
-| Nothing in `docs/` | "Start with `/ck:opportunity` and describe your idea in a sentence. It writes `docs/opportunity.md`: what the product is, who it is for, what the market looks like, and whether it is worth doing." |
-| Opportunity only | "Run `/ck:market-research` to go deeper on the market, or `/ck:brief` if the opportunity is enough to start from." |
+| This session is still waiting on a run it launched | "Your [document] is still being written. I'll tell you when it's ready." |
+| The newest run record is `in review` | "Your [document] is waiting for your review. Open the review page or `docs/<file>`, then say done or run `/ck:<command>` again." |
+| The newest run record is `stopped partway` | "Your [document] stopped partway. Everything so far is in `docs/<file>`. Run `/ck:<command>` again to continue." |
+| No opportunity analysis and no brief | "Start with `/ck:opportunity` and describe your idea in a sentence. It writes `docs/opportunity.md`: what the product is, who it is for, what the market looks like, and whether it is worth doing." |
+| Opportunity, no market research, no brief | "Run `/ck:market-research` to go deeper on the market, or `/ck:brief` if the opportunity is enough to start from." |
+| Opportunity and market research, no brief | "Run `/ck:brief`. It starts from your opportunity analysis and writes `docs/brief.md`." |
 | Brief, no team | "Run `/ck:team`. It decides who is on this product and who owns what, and writes `docs/TEAM.md`." |
 | Brief and team, no PRD | "Run `/ck:prd`. It turns the brief into full requirements and takes a few minutes." |
 | PRD, no roadmap | "Run `/ck:roadmap`. It orders the work and writes `ROADMAP.md`." |
@@ -2257,6 +2331,10 @@ Then say the first line that applies:
 | Everything above | "The definition is complete. Run `/ck:design <feature>` for any feature in the PRD, or `/ck:panel <question>` for a decision. Building features is the next release of ck." |
 
 Do not run any agent. Do not explain how the tool works unless asked.
+
+## 4. When another skill closes with this
+
+Every gate-owning skill ends by reading this file. Do sections 1 to 3 the same way, after that skill's own finished sentence: the table, the line under it, then the one thing to say.
 ````
 
 ## Appendix G. The brief and PRD contracts
