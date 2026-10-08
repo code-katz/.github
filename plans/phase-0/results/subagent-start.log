@@ -1,0 +1,10 @@
+=== 2026-09-09T01:44:57Z
+CLAUDE_PLUGIN_ROOT=/tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/ck
+CLAUDE_PLUGIN_DATA=/root/.claude/plugins/data/ck-inline
+stdin: {"session_id":"ae604898-06d4-57f5-9db7-1f318e478554","transcript_path":"/root/.claude/projects/-tmp-claude-0--home-user--github-ae604898-06d4-57f5-9db7-1f318e478554-scratchpad-spikes-project/ae604898-06d4-57f5-9db7-1f318e478554.jsonl","cwd":"/tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/project","scratchpad_dir":"/tmp/claude-0/-tmp-claude-0--home-user--github-ae604898-06d4-57f5-9db7-1f318e478554-scratchpad-spikes-project/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad","prompt_id":"7070c97b-4876-4aa6-89bf-da2dc6e64255","agent_id":"a83a712cf7ef418a5","agent_type":"ck:river","hook_event_name":"SubagentStart"}
+=== 2026-09-09T01:44:57Z
+CLAUDE_PLUGIN_ROOT=/tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/ck
+CLAUDE_PLUGIN_DATA=/root/.claude/plugins/data/ck-inline
+stdin: {"session_id":"ae604898-06d4-57f5-9db7-1f318e478554","transcript_path":"/root/.claude/projects/-tmp-claude-0--home-user--github-ae604898-06d4-57f5-9db7-1f318e478554-scratchpad-spikes-project/ae604898-06d4-57f5-9db7-1f318e478554.jsonl","cwd":"/tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/project","scratchpad_dir":"/tmp/claude-0/-tmp-claude-0--home-user--github-ae604898-06d4-57f5-9db7-1f318e478554-scratchpad-spikes-project/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad","prompt_id":"7070c97b-4876-4aa6-89bf-da2dc6e64255","agent_id":"a8096f4677c7e3907","agent_type":"ck:toni","hook_event_name":"SubagentStart"}
+wrote usage.jsonl
+wrote usage.jsonl
