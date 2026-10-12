@@ -1,0 +1,16 @@
+=== 2026-09-09T01:43:15Z
+CLAUDE_PLUGIN_ROOT=/tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/ck
+CLAUDE_PLUGIN_DATA=/root/.claude/plugins/data/ck-inline
+stdin: {"session_id":"ae604898-06d4-57f5-9db7-1f318e478554","transcript_path":"/root/.claude/projects/-tmp-claude-0--home-user--github-ae604898-06d4-57f5-9db7-1f318e478554-scratchpad-spikes-project/ae604898-06d4-57f5-9db7-1f318e478554.jsonl","cwd":"/tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/project","scratchpad_dir":"/tmp/claude-0/-tmp-claude-0--home-user--github-ae604898-06d4-57f5-9db7-1f318e478554-scratchpad-spikes-project/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad","hook_event_name":"SessionStart","source":"startup"}
+=== 2026-09-09T01:43:42Z
+CLAUDE_PLUGIN_ROOT=/tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/ck
+CLAUDE_PLUGIN_DATA=/root/.claude/plugins/data/ck-inline
+stdin: {"session_id":"ae604898-06d4-57f5-9db7-1f318e478554","transcript_path":"/root/.claude/projects/-tmp-claude-0--home-user--github-ae604898-06d4-57f5-9db7-1f318e478554-scratchpad-spikes-project/ae604898-06d4-57f5-9db7-1f318e478554.jsonl","cwd":"/tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/project","scratchpad_dir":"/tmp/claude-0/-tmp-claude-0--home-user--github-ae604898-06d4-57f5-9db7-1f318e478554-scratchpad-spikes-project/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad","hook_event_name":"SessionStart","source":"startup"}
+=== 2026-09-09T01:44:09Z
+CLAUDE_PLUGIN_ROOT=/tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/ck
+CLAUDE_PLUGIN_DATA=/root/.claude/plugins/data/ck-inline
+stdin: {"session_id":"ae604898-06d4-57f5-9db7-1f318e478554","transcript_path":"/root/.claude/projects/-tmp-claude-0--home-user--github-ae604898-06d4-57f5-9db7-1f318e478554-scratchpad-spikes-project/ae604898-06d4-57f5-9db7-1f318e478554.jsonl","cwd":"/tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/project","scratchpad_dir":"/tmp/claude-0/-tmp-claude-0--home-user--github-ae604898-06d4-57f5-9db7-1f318e478554-scratchpad-spikes-project/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad","hook_event_name":"SessionStart","source":"startup"}
+=== 2026-09-09T01:44:52Z
+CLAUDE_PLUGIN_ROOT=/tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/ck
+CLAUDE_PLUGIN_DATA=/root/.claude/plugins/data/ck-inline
+stdin: {"session_id":"ae604898-06d4-57f5-9db7-1f318e478554","transcript_path":"/root/.claude/projects/-tmp-claude-0--home-user--github-ae604898-06d4-57f5-9db7-1f318e478554-scratchpad-spikes-project/ae604898-06d4-57f5-9db7-1f318e478554.jsonl","cwd":"/tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/project","scratchpad_dir":"/tmp/claude-0/-tmp-claude-0--home-user--github-ae604898-06d4-57f5-9db7-1f318e478554-scratchpad-spikes-project/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad","hook_event_name":"SessionStart","source":"startup"}

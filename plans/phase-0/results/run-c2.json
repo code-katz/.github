@@ -1,0 +1,77 @@
+{
+ "subtype": "success",
+ "is_error": false,
+ "num_turns": 1,
+ "duration_ms": 7430,
+ "result": "```json\n{\n  \"nameAttempt\": \"worked\",\n  \"scriptPathUsed\": false,\n  \"consentPromptSeen\": \"not observable\",\n  \"workflowResult\": {\n    \"nested\": {\n      \"river\": {\n        \"firstWord\": \"RIVERSPIKE\",\n        \"text\": \"RIVERSPIKE hello! I'm ready to help with your spike edition tasks today.\"\n      },\n      \"toni\": {\n        \"firstWord\": \"TONISPIKE\",\n        \"text\": \"TONISPIKE Hello \u2014 good to meet you.\"\n      },\n      \"research\": {\n        \"searched\": true,\n        \"toolUsed\": \"WebSearch\",\n        \"url\": \"https://devops.com/claude-codes-dynamic-workflows-take-on-the-tasks-that-were-too-big-to-automate/\",\n        \"error\": \"\"\n      },\n      \"pluginRoot\": \"/tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/ck\"\n    },\n    \"nestedError\": null,\n    \"nestedBy\": \"name\",\n    \"pluginRootSeen\": \"/tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/ck\"\n  },\n  \"notes\": \"Workflow('ck:draft-spike', ...) succeeded on the first attempt, so step 2 (scriptPath fallback) was skipped as instructed. The workflow ran fully in the background; no interactive consent/permission prompt was visible to me during its execution, so I could not directly observe whether one occurred.\"\n}\n```",
+ "modelUsage": {
+  "claude-sonnet-5": {
+   "inputTokens": 12,
+   "outputTokens": 1438,
+   "cacheReadInputTokens": 204749,
+   "cacheCreationInputTokens": 37986,
+   "webSearchRequests": 0,
+   "costUSD": 0.1542038,
+   "contextWindow": 1000000,
+   "maxOutputTokens": 64000,
+   "thinkingTokens": 391,
+   "canonicalModel": "claude-sonnet-5",
+   "provider": "firstParty",
+   "costBasis": "list"
+  },
+  "claude-opus-5": {
+   "inputTokens": 2,
+   "outputTokens": 97,
+   "cacheReadInputTokens": 0,
+   "cacheCreationInputTokens": 29138,
+   "webSearchRequests": 0,
+   "costUSD": 0.1845475,
+   "contextWindow": 1000000,
+   "maxOutputTokens": 64000,
+   "thinkingTokens": 0,
+   "canonicalModel": "claude-opus-5",
+   "provider": "firstParty",
+   "costBasis": "list"
+  },
+  "claude-haiku-4-5-20251001": {
+   "inputTokens": 10760,
+   "outputTokens": 725,
+   "cacheReadInputTokens": 0,
+   "cacheCreationInputTokens": 23819,
+   "webSearchRequests": 1,
+   "costUSD": 0.054158750000000005,
+   "contextWindow": 200000,
+   "maxOutputTokens": 32000,
+   "thinkingTokens": 192,
+   "canonicalModel": "claude-haiku-4-5",
+   "provider": "firstParty",
+   "costBasis": "list"
+  }
+ },
+ "subagent_stats": {
+  "spawned": 0,
+  "requested": {
+   "background": 0,
+   "foreground": 0,
+   "unset": 0
+  },
+  "started_in_background": 0,
+  "max_depth": 0,
+  "spawned_by_subagents": 0,
+  "completed": 0,
+  "failed": 0,
+  "killed": {
+   "parent": 0,
+   "user": 0,
+   "system": 0
+  },
+  "refused": {
+   "depth_limit": 0,
+   "concurrency_limit": 0,
+   "budget": 0
+  },
+  "by_type": {}
+ },
+ "permission_denials": [],
+ "total_cost_usd": 0.39291005
+}

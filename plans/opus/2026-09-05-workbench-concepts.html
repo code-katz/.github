@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Katz Workbench — 5 Concepts (rev 2)</title>
+<style>
+  :root{
+    --bg:#0f1013; --panel:#16181d; --panel2:#1c1f26; --line:#282c35; --line2:#333845;
+    --ink:#e9e8e4; --dim:#9a978f; --faint:#6a6862;
+    --accent:#e0a267; --accent2:#7fb0e8; --ok:#7fc08d; --warn:#e0b267; --stop:#e08585;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+
+    /* model hue × effort shade — darker = more effort */
+    --fable-1:#ead4f4; --fable-2:#d9b0ec; --fable-3:#c78ae0; --fable-4:#a35fc4; --fable-5:#7d3ba0;
+    --opus-1:#f6e0c9;  --opus-2:#ecc79c;  --opus-3:#e0a267;  --opus-4:#c17d38;  --opus-5:#9c5b18;
+    --sonnet-1:#d3e4f8; --sonnet-2:#a9cbf1; --sonnet-3:#7fb0e8; --sonnet-4:#4f8bc9; --sonnet-5:#2c68a4;
+    --haiku-1:#d3ead8; --haiku-2:#a9d8b4; --haiku-3:#7fc08d; --haiku-4:#519d63; --haiku-5:#2f7a43;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font:14px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased}
+
+  #top{position:sticky;top:0;z-index:40;background:rgba(15,16,19,.94);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line)}
+  #brand{display:flex;align-items:center;gap:10px;padding:12px 22px 0}
+  #brand h1{margin:0;font-size:14px;font-weight:640;letter-spacing:-.01em}
+  #brand span{color:var(--faint);font-size:12.5px}
+  #brand .sp{flex:1}
+  #brand .badge{font-size:11px;color:var(--faint);border:1px solid var(--line2);padding:2px 8px;border-radius:20px}
+  #tabs{display:flex;gap:2px;padding:10px 22px 0;overflow-x:auto}
+  .tab{background:none;border:0;border-bottom:2px solid transparent;color:var(--dim);
+    font:inherit;font-size:13px;padding:8px 14px 10px;cursor:pointer;white-space:nowrap;
+    display:flex;align-items:center;gap:8px}
+  .tab:hover{color:var(--ink)}
+  .tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+  .tab .n{font:11px var(--mono);opacity:.6}
+
+  .note{display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--line);background:var(--panel)}
+  .note>div{padding:12px 22px;border-right:1px solid var(--line)}
+  .note>div:last-child{border-right:0}
+  .note h4{margin:0 0 3px;font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);font-weight:600}
+  .note p{margin:0;font-size:12.5px;color:var(--dim);line-height:1.5}
+  .note b{color:var(--ink);font-weight:600}
+  .pill{display:inline-block;font:11px var(--mono);padding:1px 7px;border-radius:4px;border:1px solid currentColor;margin-right:4px}
+  .pill.s{color:var(--ok)} .pill.m{color:var(--warn)} .pill.l{color:var(--stop)} .pill.xl{color:var(--stop)}
+
+  .pane{display:none;padding:22px}
+  .pane.on{display:block}
+  .grid{display:grid;gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:15px 17px}
+  .card h3{margin:0 0 2px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);font-weight:600}
+  .card .sub{font-size:11.5px;color:var(--faint);margin-bottom:12px}
+  .big{font-size:27px;font-weight:640;letter-spacing:-.02em;line-height:1.15}
+  .big small{font-size:12px;font-weight:400;color:var(--faint);letter-spacing:0}
+  .delta{font-size:11.5px}
+  .up{color:var(--stop)} .down{color:var(--ok)}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);
+    font-weight:600;padding:0 10px 7px 0;border-bottom:1px solid var(--line2)}
+  td{padding:8px 10px 8px 0;border-bottom:1px solid var(--line)}
+  tr:last-child td{border-bottom:0}
+  .mono{font:12px var(--mono)}
+  .r{text-align:right}
+  .bar{height:6px;border-radius:4px;background:var(--line2);overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:4px;background:var(--accent)}
+
+  /* ---- model × effort tokens ---- */
+  .av{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+    font:11px/1 var(--mono);font-weight:700;color:#0f1013;flex:none;border:1.5px solid transparent}
+  .av.e4,.av.e5{color:#fff}
+  .chip{display:inline-flex;align-items:center;gap:5px;font:10.5px var(--mono);
+    padding:1.5px 8px;border-radius:20px;border:1px solid currentColor}
+  .sw{width:9px;height:9px;border-radius:2px;display:inline-block;flex:none}
+
+  .f1{background:var(--fable-1)} .f2{background:var(--fable-2)} .f3{background:var(--fable-3)}
+  .f4{background:var(--fable-4)} .f5{background:var(--fable-5)}
+  .o1{background:var(--opus-1)} .o2{background:var(--opus-2)} .o3{background:var(--opus-3)}
+  .o4{background:var(--opus-4)} .o5{background:var(--opus-5)}
+  .s1{background:var(--sonnet-1)} .s2{background:var(--sonnet-2)} .s3{background:var(--sonnet-3)}
+  .s4{background:var(--sonnet-4)} .s5{background:var(--sonnet-5)}
+  .h1{background:var(--haiku-1)} .h2{background:var(--haiku-2)} .h3{background:var(--haiku-3)}
+  .h4{background:var(--haiku-4)} .h5{background:var(--haiku-5)}
+  .cf{color:var(--fable-3)} .co{color:var(--opus-3)} .cs{color:var(--sonnet-3)} .ch{color:var(--haiku-3)}
+
+  .st{display:inline-flex;align-items:center;gap:5px;font-size:12px}
+  .dot{width:7px;height:7px;border-radius:50%;flex:none}
+  .d-run{background:var(--accent2);box-shadow:0 0 0 3px rgba(127,176,232,.16)}
+  .d-ok{background:var(--ok)} .d-wait{background:var(--faint)}
+  .d-fail{background:var(--stop)} .d-gate{background:var(--warn)}
+
+  /* ---- concept 2: runs strip + swimlanes ---- */
+  .runs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  .run{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 13px;cursor:pointer}
+  .run:hover{border-color:var(--line2)}
+  .run.on{border-color:var(--accent2);box-shadow:0 0 0 1px rgba(127,176,232,.22);background:var(--panel2)}
+  .run .wf{font:12px var(--mono);color:var(--accent2)}
+  .run .pj{font-size:12.5px;font-weight:600;margin:2px 0 1px}
+  .run .mt{font-size:11px;color:var(--faint)}
+  .phasebar{display:flex;gap:3px;margin-top:8px}
+  .phasebar i{flex:1;height:4px;border-radius:3px;background:var(--line2)}
+  .phasebar i.done{background:var(--ok)} .phasebar i.now{background:var(--accent2)}
+  .phasebar i.fail{background:var(--stop)}
+
+  .tl{position:relative;margin-top:6px}
+  .tl-head{display:grid;grid-template-columns:158px 1fr;align-items:end;margin-bottom:6px}
+  .tl-phases{display:flex;gap:2px}
+  .tl-phases div{font:10px var(--mono);color:var(--faint);text-align:center;padding:3px 0 5px;
+    border-bottom:2px solid var(--line2);white-space:nowrap;overflow:hidden}
+  .tl-phases div.done{border-bottom-color:var(--ok);color:var(--ok)}
+  .tl-phases div.now{border-bottom-color:var(--accent2);color:var(--accent2)}
+  .lane{display:grid;grid-template-columns:158px 1fr;align-items:center;
+    border-bottom:1px solid var(--line);min-height:44px}
+  .lane:last-child{border-bottom:0}
+  .lane-who{display:flex;align-items:center;gap:8px;padding-right:12px}
+  .lane-who .nm{font-size:12.5px;font-weight:600}
+  .lane-who .rl{font-size:10.5px;color:var(--faint)}
+  .lane-track{position:relative;height:44px}
+  .lane-track .grid-l{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+  .blk{position:absolute;top:11px;height:22px;border-radius:5px;display:flex;align-items:center;
+    padding:0 8px;font:10.5px var(--mono);color:#0f1013;overflow:hidden;white-space:nowrap;
+    box-shadow:0 1px 2px rgba(0,0,0,.3)}
+  .blk.dark{color:#fff}
+  .blk.pend{background:repeating-linear-gradient(45deg,#262a33,#262a33 5px,#1c1f26 5px,#1c1f26 10px);
+    color:var(--faint);box-shadow:none}
+  .blk.gate{border:1.5px dashed rgba(255,255,255,.45)}
+  .nowline{position:absolute;top:-22px;bottom:0;width:2px;background:var(--accent2);z-index:5}
+  .nowline::after{content:"now";position:absolute;top:-14px;left:-11px;font:9px var(--mono);
+    color:var(--accent2);background:var(--bg);padding:0 3px}
+
+  .feed{font:12px var(--mono);color:var(--dim)}
+  .feed div{padding:5px 0;border-bottom:1px solid var(--line);display:flex;gap:10px}
+  .feed div:last-child{border-bottom:0}
+  .feed .t{color:var(--faint);flex:none}
+
+  /* ---- concept 5: workbench ---- */
+  .wb{display:grid;grid-template-columns:216px 1fr;gap:14px;position:relative}
+  .seg2{display:flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+  .seg2 span{flex:1;text-align:center;padding:7px 4px;font-size:11.5px;color:var(--dim);
+    border-right:1px solid var(--line2);cursor:pointer}
+  .seg2 span:last-child{border-right:0}
+  .seg2 span.on{background:var(--accent);color:#0f1013;font-weight:600}
+  .plist div.row{display:flex;align-items:center;gap:10px;padding:7px 9px;border-radius:8px;cursor:pointer}
+  .plist div.row:hover{background:var(--panel2)}
+  .plist div.row.on{background:var(--panel2);box-shadow:inset 2px 0 0 var(--accent)}
+  .plist .nm{flex:1;font-size:13px}
+  .plist .ct{font:11px var(--mono);color:var(--faint)}
+  .field{margin-bottom:13px}
+  .field label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;
+    color:var(--faint);font-weight:600;margin-bottom:5px}
+  .input{width:100%;background:var(--bg);border:1px solid var(--line2);border-radius:7px;
+    padding:8px 10px;color:var(--ink);font:inherit;font-size:13px}
+  .input.mono{font:12px var(--mono)}
+  textarea.input{min-height:140px;resize:vertical;line-height:1.6}
+  .warnbox{border:1px solid var(--warn);background:rgba(224,178,103,.07);border-radius:9px;
+    padding:11px 13px;font-size:12.5px;color:var(--dim)}
+  .warnbox b{color:var(--warn)}
+  .btn{background:var(--accent);border:0;color:#0f1013;font:inherit;font-size:13px;font-weight:600;
+    padding:8px 15px;border-radius:7px;cursor:pointer}
+  .btn.ghost{background:none;border:1px solid var(--line2);color:var(--dim);font-weight:400}
+
+  /* slide-out */
+  #drawer{position:fixed;top:0;right:0;bottom:0;width:310px;background:var(--panel);
+    border-left:1px solid var(--line2);padding:18px;z-index:60;transform:translateX(100%);
+    transition:transform .22s ease;overflow-y:auto;box-shadow:-10px 0 30px rgba(0,0,0,.4)}
+  #drawer.on{transform:translateX(0)}
+  #drawer .x{position:absolute;top:14px;right:15px;background:none;border:0;color:var(--faint);
+    font-size:17px;cursor:pointer;line-height:1}
+  #scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:55;display:none}
+  #scrim.on{display:block}
+
+  .stagerow{display:grid;grid-template-columns:26px 1fr 130px 96px;gap:10px;align-items:center;
+    padding:9px 0;border-bottom:1px solid var(--line)}
+  .stagerow:last-child{border-bottom:0}
+  .stagenum{font:11px var(--mono);color:var(--faint);text-align:center}
+  .effortsel{display:flex;gap:2px}
+  .effortsel i{width:15px;height:15px;border-radius:3px;cursor:pointer;opacity:.32}
+  .effortsel i.on{opacity:1;outline:1.5px solid rgba(255,255,255,.55);outline-offset:1px}
+</style>
+</head>
+<body>
+
+<div id="top">
+  <div id="brand">
+    <h1>Katz Workbench</h1><span>— five concepts · rev 2</span>
+    <div class="sp"></div>
+    <span class="badge">mockup · not live data</span>
+  </div>
+  <div id="tabs">
+    <button class="tab on" data-p="1"><span class="n">01</span> Report</button>
+    <button class="tab" data-p="2"><span class="n">02</span> Live Activity</button>
+    <button class="tab" data-p="3"><span class="n">03</span> Agent Hierarchy</button>
+    <button class="tab" data-p="4"><span class="n">04</span> Economics</button>
+    <button class="tab" data-p="5"><span class="n">05</span> Workbench</button>
+  </div>
+</div>
+
+<!-- ============ 1. REPORT ============ -->
+<div class="note" data-n="1">
+  <div><h4>What it is</h4><p>A <b>generated static HTML file</b>. No server, no polling. Run <span class="mono">/katz:report</span>, a file opens. The shape <span class="mono">/insights</span> already uses.</p></div>
+  <div><h4>When it wins</h4><p>Answering <b>"what happened last month"</b> — spend, which personas earn their keep, gate pass rates.</p></div>
+  <div><h4>Cost</h4><p><span class="pill s">S–M</span> low risk. <b>Recommended as v0.</b></p></div>
+</div>
+
+<div class="pane on" data-p="1">
+  <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
+    <div class="card"><h3>Spend · 30d</h3><div class="big">$284<small>.60</small></div><div class="delta up">▲ 18% vs prior 30d</div></div>
+    <div class="card"><h3>Workflow runs</h3><div class="big">63</div><div class="delta" style="color:var(--faint)">across 3 projects</div></div>
+    <div class="card"><h3>Gate pass rate</h3><div class="big">86<small>%</small></div><div class="delta down">▼ 9 reworks, all recovered</div></div>
+    <div class="card"><h3>Personas used</h3><div class="big">9<small> / 22</small></div><div class="delta up">13 idle 90d+</div></div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1.6fr 1fr">
+    <div class="card">
+      <h3>Spend by week</h3><div class="sub">by model tier</div>
+      <svg viewBox="0 0 620 190" style="width:100%;height:auto">
+        <g font-size="10" fill="#6a6862" font-family="ui-monospace,monospace">
+          <text x="0" y="14">$120</text><text x="0" y="60">$80</text><text x="0" y="106">$40</text><text x="0" y="152">$0</text></g>
+        <g stroke="#282c35"><line x1="38" y1="10" x2="620" y2="10"/><line x1="38" y1="56" x2="620" y2="56"/>
+          <line x1="38" y1="102" x2="620" y2="102"/><line x1="38" y1="148" x2="620" y2="148"/></g>
+        <g>
+          <rect x="70" y="112" width="52" height="36" fill="#7fb0e8" rx="2"/><rect x="70" y="76" width="52" height="36" fill="#e0a267" rx="2"/><rect x="70" y="60" width="52" height="16" fill="#c78ae0" rx="2"/>
+          <rect x="205" y="120" width="52" height="28" fill="#7fb0e8" rx="2"/><rect x="205" y="82" width="52" height="38" fill="#e0a267" rx="2"/><rect x="205" y="52" width="52" height="30" fill="#c78ae0" rx="2"/>
+          <rect x="340" y="118" width="52" height="30" fill="#7fb0e8" rx="2"/><rect x="340" y="88" width="52" height="30" fill="#e0a267" rx="2"/><rect x="340" y="40" width="52" height="48" fill="#c78ae0" rx="2"/>
+          <rect x="475" y="110" width="52" height="38" fill="#7fb0e8" rx="2"/><rect x="475" y="70" width="52" height="40" fill="#e0a267" rx="2"/><rect x="475" y="34" width="52" height="36" fill="#c78ae0" rx="2"/></g>
+        <g font-size="10" fill="#6a6862" font-family="ui-monospace,monospace" text-anchor="middle">
+          <text x="96" y="168">Aug 11</text><text x="231" y="168">Aug 18</text><text x="366" y="168">Aug 25</text><text x="501" y="168">Sep 1</text></g>
+      </svg>
+      <div style="display:flex;gap:16px;margin-top:8px;font-size:11.5px;color:var(--dim)">
+        <span><i class="sw f3"></i> Fable 5.1</span><span><i class="sw o3"></i> Opus 5</span><span><i class="sw s3"></i> Sonnet 5</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Persona usage</h3><div class="sub">runs, last 30 days</div>
+      <table>
+        <tr><td style="width:70px">River</td><td><div class="bar"><i style="width:100%"></i></div></td><td class="r mono" style="width:26px">18</td></tr>
+        <tr><td>Akira</td><td><div class="bar"><i style="width:78%"></i></div></td><td class="r mono">14</td></tr>
+        <tr><td>Toni</td><td><div class="bar"><i style="width:61%"></i></div></td><td class="r mono">11</td></tr>
+        <tr><td>Sasha</td><td><div class="bar"><i style="width:50%"></i></div></td><td class="r mono">9</td></tr>
+        <tr><td>Kai</td><td><div class="bar"><i style="width:39%"></i></div></td><td class="r mono">7</td></tr>
+        <tr><td>Robin</td><td><div class="bar"><i style="width:22%"></i></div></td><td class="r mono">4</td></tr>
+        <tr><td style="color:var(--faint)">Iris</td><td><div class="bar"><i style="width:11%;background:var(--faint)"></i></div></td><td class="r mono" style="color:var(--faint)">2</td></tr>
+      </table>
+      <div class="warnbox" style="margin-top:13px">
+        <b>13 personas idle 90+ days.</b> Reiner, Cornelius, Ernie, Piper and Rez are a project cast — move them to that repo's <span class="mono">.claude/agents/</span> rather than deleting.
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h3>Recent runs</h3>
+    <table>
+      <thead><tr><th>Workflow</th><th>Project</th><th>Personas</th><th>Models</th><th class="r">Tokens</th><th class="r">Cost</th><th class="r">Outcome</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">/katz:feature</td><td>Trailhead</td><td>Akira · Sasha · Robin</td>
+          <td><span class="chip co"><i class="sw o4"></i>opus·xhigh</span> <span class="chip cs"><i class="sw s3"></i>sonnet·high</span></td>
+          <td class="r mono">1.24M</td><td class="r mono">$18.40</td><td class="r"><span class="st"><i class="dot d-ok"></i>merged</span></td></tr>
+        <tr><td class="mono">/katz:panel</td><td>Trailhead</td><td>River · Toni · Kai</td>
+          <td><span class="chip cf"><i class="sw f3"></i>fable·high</span> <span class="chip co"><i class="sw o3"></i>opus·high</span></td>
+          <td class="r mono">186K</td><td class="r mono">$4.10</td><td class="r"><span class="st"><i class="dot d-ok"></i>2 of 3 agreed</span></td></tr>
+        <tr><td class="mono">/katz:market-research</td><td>Nightgrid</td><td>River · Toni</td>
+          <td><span class="chip cf"><i class="sw f4"></i>fable·xhigh</span></td>
+          <td class="r mono">2.1M</td><td class="r mono">$31.80</td><td class="r"><span class="st"><i class="dot d-ok"></i>done</span></td></tr>
+        <tr><td class="mono">/katz:prd</td><td>Nightgrid</td><td>River</td>
+          <td><span class="chip co"><i class="sw o3"></i>opus·high</span></td>
+          <td class="r mono">340K</td><td class="r mono">$6.20</td><td class="r"><span class="st"><i class="dot d-gate"></i>1 rework</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============ 2. LIVE ACTIVITY ============ -->
+<div class="note" data-n="2" style="display:none">
+  <div><h4>What it is</h4><p><b>All concurrent runs</b> in a strip; the selected one opens as a <b>swimlane timeline</b> with each agent on its own lane.</p></div>
+  <div><h4>When it wins</h4><p>Seeing what Akira, Sasha and Robin are each doing <b>and when</b>, plus which lanes are blocked on which. Gantt, not cards.</p></div>
+  <div><h4>Cost</h4><p><span class="pill l">L</span> med–high risk. Still <b>deferred</b> — but the swimlane is the version worth building if it happens.</p></div>
+</div>
+
+<div class="pane" data-p="2">
+  <div class="runs">
+    <div class="run on">
+      <div class="wf">/katz:feature</div><div class="pj">Trailhead · offline sync</div>
+      <div class="mt">phase 3/6 · 3 agents · 6m 12s · $6.84</div>
+      <div class="phasebar"><i class="done"></i><i class="done"></i><i class="now"></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="run">
+      <div class="wf">/katz:market-research</div><div class="pj">Nightgrid</div>
+      <div class="mt">phase 2/3 · 8 agents · 11m 40s · $19.20</div>
+      <div class="phasebar"><i class="done"></i><i class="now"></i><i></i></div>
+    </div>
+    <div class="run">
+      <div class="wf">/katz:panel</div><div class="pj">Trailhead · social sharing</div>
+      <div class="mt">phase 1/2 · 3 agents · 1m 04s · $0.90</div>
+      <div class="phasebar"><i class="now"></i><i></i></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:4px">
+      <div style="flex:1">
+        <h3>Selected run</h3>
+        <div style="font-size:16px;font-weight:600;margin:2px 0 2px">/katz:feature — offline sync</div>
+        <div class="sub" style="margin:0">Trailhead · 3 slices, worktree-isolated · manifest: design ✓ content ✓</div>
+      </div>
+      <div style="text-align:right"><div class="big" style="font-size:22px">$6<small>.84</small></div>
+        <div class="delta" style="color:var(--faint)">est. $14 total</div></div>
+    </div>
+
+    <div class="tl">
+      <div class="tl-head">
+        <div style="font:10px var(--mono);color:var(--faint);padding-bottom:6px">AGENT</div>
+        <div class="tl-phases">
+          <div class="done" style="flex:1.1">1 Plan</div>
+          <div class="done" style="flex:1.3">2 Design</div>
+          <div class="now" style="flex:2.6">3 Build</div>
+          <div style="flex:1.4">4 Verify</div>
+          <div style="flex:.9">5 Merge</div>
+          <div style="flex:1">6 Content</div>
+        </div>
+      </div>
+
+      <div style="position:relative">
+        <div class="nowline" style="left:calc(158px + (100% - 158px) * 0.545)"></div>
+
+        <!-- Akira -->
+        <div class="lane">
+          <div class="lane-who"><div class="av o4">A</div>
+            <div><div class="nm">Akira</div><div class="rl">slice 1 · sync engine</div></div></div>
+          <div class="lane-track">
+            <div class="blk o5 dark" style="left:0%;width:11.5%">plan · max</div>
+            <div class="blk o4 dark" style="left:26%;width:28%">writing resolver · xhigh</div>
+            <div class="blk pend gate" style="left:56%;width:14%">gate ← Robin</div>
+          </div>
+        </div>
+
+        <!-- Kai -->
+        <div class="lane">
+          <div class="lane-who"><div class="av o3">K</div>
+            <div><div class="nm">Kai</div><div class="rl">design · sync UI</div></div></div>
+          <div class="lane-track">
+            <div class="blk o3" style="left:12%;width:13%">2 mockup states · high</div>
+          </div>
+        </div>
+
+        <!-- Sasha -->
+        <div class="lane">
+          <div class="lane-who"><div class="av s3">S</div>
+            <div><div class="nm">Sasha</div><div class="rl">slice 2 · status UI</div></div></div>
+          <div class="lane-track">
+            <div class="blk s3" style="left:26%;width:26%">SyncBadge.tsx · high</div>
+            <div class="blk pend gate" style="left:56%;width:14%">gate ← Akira</div>
+          </div>
+        </div>
+
+        <!-- Robin -->
+        <div class="lane">
+          <div class="lane-who"><div class="av s2">R</div>
+            <div><div class="nm">Robin</div><div class="rl">slice 3 · migration tests</div></div></div>
+          <div class="lane-track">
+            <div class="blk pend" style="left:26%;width:28%">blocked on slice 1</div>
+            <div class="blk pend" style="left:56%;width:14%">queued</div>
+          </div>
+        </div>
+
+        <!-- Toni -->
+        <div class="lane">
+          <div class="lane-who"><div class="av o2">T</div>
+            <div><div class="nm">Toni</div><div class="rl">content · release note</div></div></div>
+          <div class="lane-track">
+            <div class="blk pend" style="left:81%;width:19%">after merge · med</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:18px;margin-top:12px;font-size:11px;color:var(--faint);
+      border-top:1px solid var(--line);padding-top:10px;flex-wrap:wrap">
+      <span>Block colour = <b style="color:var(--dim)">model</b>, shade = <b style="color:var(--dim)">effort</b></span>
+      <span><i class="sw o1"></i><i class="sw o2"></i><i class="sw o3"></i><i class="sw o4"></i><i class="sw o5"></i> low → max</span>
+      <span style="border:1.5px dashed var(--faint);border-radius:4px;padding:0 6px">dashed = verification gate</span>
+      <span>hatched = pending / blocked</span>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h3>Event feed</h3><div class="sub">selected run only</div>
+    <div class="feed">
+      <div><span class="t">06:12</span><span><b style="color:var(--ink)">Sasha</b> edited <span style="color:var(--accent2)">SyncBadge.tsx</span></span></div>
+      <div><span class="t">06:04</span><span><b style="color:var(--ink)">Akira</b> ran <span style="color:var(--accent2)">npm test -- sync</span> · 14 passed, 2 failed</span></div>
+      <div><span class="t">05:31</span><span style="color:var(--warn)">⚑ Phase <b>Design</b> complete — <span class="mono">brand/mock-sync.html</span></span></div>
+      <div><span class="t">02:14</span><span style="color:var(--ok)">✓ Interface contract frozen · 3 slices, scopes disjoint</span></div>
+      <div><span class="t">00:41</span><span>Plan approved · manifest: design ✓ content ✓</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 3. HIERARCHY ============ -->
+<div class="note" data-n="3" style="display:none">
+  <div><h4>What it is</h4><p>The <b>spatial model</b> — job to phases to agents. Shows who spawned whom and what gates what.</p></div>
+  <div><h4>When it wins</h4><p>Understanding <b>structure</b> rather than progress. Spotting a phase doing more than it should.</p></div>
+  <div><h4>Cost</h4><p><span class="pill m">M</span> on top of live data.</p></div>
+</div>
+
+<div class="pane" data-p="3">
+  <div class="card">
+    <h3>/katz:feature — offline sync</h3><div class="sub">Trailhead · 11 agents · 6 phases · $6.84</div>
+    <svg viewBox="0 0 980 420" style="width:100%;height:auto;font-family:ui-sans-serif,-apple-system,sans-serif">
+      <defs><style>
+        .nd{fill:#1c1f26;stroke:#333845;rx:8}
+        .lb{fill:#e9e8e4;font-size:12px;font-weight:600}
+        .sl{fill:#6a6862;font-size:10px;font-family:ui-monospace,monospace}
+        .ln{stroke:#333845;fill:none;stroke-width:1.5}
+        .lnd{stroke:#7fc08d} .lna{stroke:#7fb0e8}
+      </style></defs>
+      <rect class="nd" x="20" y="180" width="132" height="52"/>
+      <text class="lb" x="34" y="203">offline sync</text><text class="sl" x="34" y="219">job · roadmap #12</text>
+      <path class="ln lnd" d="M152 206 C 185 206, 185 46, 218 46"/>
+      <path class="ln lnd" d="M152 206 C 185 206, 185 126, 218 126"/>
+      <path class="ln lna" d="M152 206 C 185 206, 185 206, 218 206"/>
+      <path class="ln" d="M152 206 C 185 206, 185 286, 218 286"/>
+      <path class="ln" d="M152 206 C 185 206, 185 366, 218 366"/>
+      <rect class="nd" x="218" y="22" width="122" height="48" stroke="#7fc08d"/>
+      <text class="lb" x="231" y="43">1 · Plan</text><text class="sl" x="231" y="58">✓ Akira · max</text>
+      <rect class="nd" x="218" y="102" width="122" height="48" stroke="#7fc08d"/>
+      <text class="lb" x="231" y="123">2 · Design</text><text class="sl" x="231" y="138">✓ Kai · high</text>
+      <rect class="nd" x="218" y="182" width="122" height="48" stroke="#7fb0e8"/>
+      <text class="lb" x="231" y="203">3 · Build</text><text class="sl" x="231" y="218">● 3 slices</text>
+      <rect class="nd" x="218" y="262" width="122" height="48"/>
+      <text class="lb" x="231" y="283" fill="#9a978f">4 · Verify</text><text class="sl" x="231" y="298">pending</text>
+      <rect class="nd" x="218" y="342" width="122" height="48"/>
+      <text class="lb" x="231" y="363" fill="#9a978f">5 · Merge → 6 · Content</text>
+      <path class="ln lna" d="M340 206 C 375 206, 375 146, 410 146"/>
+      <path class="ln lna" d="M340 206 C 375 206, 375 206, 410 206"/>
+      <path class="ln" d="M340 206 C 375 206, 375 266, 410 266"/>
+      <rect class="nd" x="410" y="122" width="176" height="48" stroke="#7fb0e8"/>
+      <circle cx="430" cy="146" r="10" fill="#c17d38"/><text x="426" y="150" font-size="10" font-weight="700" fill="#fff">A</text>
+      <text class="lb" x="448" y="142">Akira</text><text class="sl" x="448" y="157">opus · xhigh · worktree</text>
+      <rect class="nd" x="410" y="182" width="176" height="48" stroke="#7fb0e8"/>
+      <circle cx="430" cy="206" r="10" fill="#7fb0e8"/><text x="426" y="210" font-size="10" font-weight="700" fill="#0f1013">S</text>
+      <text class="lb" x="448" y="202">Sasha</text><text class="sl" x="448" y="217">sonnet · high · worktree</text>
+      <rect class="nd" x="410" y="242" width="176" height="48"/>
+      <circle cx="430" cy="266" r="10" fill="#3a3f4a"/><text x="426" y="270" font-size="10" font-weight="700" fill="#9a978f">R</text>
+      <text class="lb" x="448" y="262" fill="#9a978f">Robin</text><text class="sl" x="448" y="277">queued · blocked on s1</text>
+      <path class="ln" d="M586 146 C 620 146, 620 146, 654 146"/>
+      <path class="ln" d="M586 206 C 620 206, 620 206, 654 206"/>
+      <rect class="nd" x="654" y="122" width="150" height="48" stroke-dasharray="3 3"/>
+      <text class="lb" x="668" y="142" fill="#9a978f">gate · Robin</text><text class="sl" x="668" y="157">sonnet · npm test</text>
+      <rect class="nd" x="654" y="182" width="150" height="48" stroke-dasharray="3 3"/>
+      <text class="lb" x="668" y="202" fill="#9a978f">gate · Akira</text><text class="sl" x="668" y="217">opus · npm test</text>
+      <g transform="translate(838,120)">
+        <text class="sl" x="0" y="0">LEGEND</text>
+        <line class="ln lnd" x1="0" y1="18" x2="22" y2="18"/><text class="sl" x="28" y="22">complete</text>
+        <line class="ln lna" x1="0" y1="38" x2="22" y2="38"/><text class="sl" x="28" y="42">running</text>
+        <line class="ln" x1="0" y1="58" x2="22" y2="58"/><text class="sl" x="28" y="62">pending</text>
+        <rect x="0" y="74" width="22" height="12" class="nd" stroke-dasharray="3 3"/><text class="sl" x="28" y="84">gate</text>
+      </g>
+    </svg>
+    <div style="font-size:12px;color:var(--faint);margin-top:6px">
+      The structural rule made visible: every gate uses a <b style="color:var(--dim)">different persona and tier</b> than the slice it checks, and downstream work depends on the gate, not the writer.
+    </div>
+  </div>
+</div>
+
+<!-- ============ 4. ECONOMICS ============ -->
+<div class="note" data-n="4" style="display:none">
+  <div><h4>What it is</h4><p><b>Cost-first.</b> Spend by project, workflow, persona and tier, with per-tier quality tracked beside it.</p></div>
+  <div><h4>When it wins</h4><p>Deciding whether a tier earns its price, and catching <b>quality drift</b> an aggregate view structurally cannot see.</p></div>
+  <div><h4>Cost</h4><p><span class="pill s">S</span> once events are stored. <b>Fold into v0.</b></p></div>
+</div>
+
+<div class="pane" data-p="4">
+  <div class="grid" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
+    <div class="card">
+      <h3>Cost per tier</h3><div class="sub">30 days · with gate pass rate alongside</div>
+      <table>
+        <thead><tr><th>Tier</th><th class="r">Runs</th><th class="r">Tokens</th><th class="r">Spend</th><th class="r">Gate pass</th></tr></thead>
+        <tbody>
+          <tr><td><span class="chip cf"><i class="sw f3"></i>fable 5.1</span></td><td class="r mono">6</td><td class="r mono">5.9M</td>
+            <td class="r mono" style="color:var(--ink)">$118.40</td><td class="r mono" style="color:var(--ok)">100%</td></tr>
+          <tr><td><span class="chip co"><i class="sw o3"></i>opus 5</span></td><td class="r mono">31</td><td class="r mono">8.2M</td>
+            <td class="r mono" style="color:var(--ink)">$104.90</td><td class="r mono" style="color:var(--ok)">91%</td></tr>
+          <tr><td><span class="chip cs"><i class="sw s3"></i>sonnet 5</span></td><td class="r mono">24</td><td class="r mono">14.1M</td>
+            <td class="r mono" style="color:var(--ink)">$59.20</td><td class="r mono" style="color:var(--warn)">74%</td></tr>
+          <tr><td><span class="chip ch"><i class="sw h3"></i>haiku 4.5</span></td><td class="r mono">88</td><td class="r mono">1.2M</td>
+            <td class="r mono" style="color:var(--ink)">$2.10</td><td class="r mono" style="color:var(--faint)">n/a</td></tr>
+        </tbody>
+      </table>
+      <div class="warnbox" style="margin-top:12px">
+        <b>Sonnet 5 gate pass rate fell to 74% from 88% last month.</b> Aggregate spend looks fine; the tier is drifting. Raise effort to <span class="mono">xhigh</span> on affected stages before changing model.
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Where the money goes</h3><div class="sub">by workflow · 30 days</div>
+      <svg viewBox="0 0 420 210" style="width:100%;height:auto">
+        <g font-size="11" font-family="ui-sans-serif,sans-serif" fill="#e9e8e4">
+          <text x="0" y="18">/katz:market-research</text><rect x="0" y="24" width="290" height="13" fill="#c78ae0" rx="3"/>
+          <text x="300" y="35" font-family="ui-monospace,monospace" font-size="11" fill="#9a978f">$118</text>
+          <text x="0" y="60">/katz:feature</text><rect x="0" y="66" width="196" height="13" fill="#e0a267" rx="3"/>
+          <text x="206" y="77" font-family="ui-monospace,monospace" font-size="11" fill="#9a978f">$79</text>
+          <text x="0" y="102">/katz:prd</text><rect x="0" y="108" width="96" height="13" fill="#7fb0e8" rx="3"/>
+          <text x="106" y="119" font-family="ui-monospace,monospace" font-size="11" fill="#9a978f">$39</text>
+          <text x="0" y="144">/katz:panel</text><rect x="0" y="150" width="72" height="13" fill="#7fb0e8" rx="3"/>
+          <text x="82" y="161" font-family="ui-monospace,monospace" font-size="11" fill="#9a978f">$29</text>
+          <text x="0" y="186">everything else</text><rect x="0" y="192" width="48" height="13" fill="#3a3f4a" rx="3"/>
+          <text x="58" y="203" font-family="ui-monospace,monospace" font-size="11" fill="#9a978f">$19</text>
+        </g>
+      </svg>
+      <div style="font-size:12px;color:var(--faint);margin-top:8px">
+        One workflow is 41% of spend. Worth asking whether <span class="mono">/katz:market-research</span> needs Fable 5.1 by default, or only on escalation.
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Model resolution</h3><div class="sub">declared vs resolved · why they differed</div>
+    <table>
+      <thead><tr><th>When</th><th>Stage</th><th>Declared</th><th>Resolved</th><th>Reason</th><th class="r">Δ cost</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">Sep 3 14:22</td><td class="mono">/katz:feature · verify s2</td>
+          <td><span class="chip co"><i class="sw o3"></i>opus·high</span></td><td><span class="chip co"><i class="sw o5"></i>opus·max</span></td>
+          <td class="mono" style="color:var(--warn)">ESCALATE_RETRY</td><td class="r mono">+$0.41</td></tr>
+        <tr><td class="mono">Sep 2 09:10</td><td class="mono">/katz:market-research</td>
+          <td><span class="chip cf"><i class="sw f4"></i>fable·xhigh</span></td><td><span class="chip co"><i class="sw o4"></i>opus·xhigh</span></td>
+          <td class="mono" style="color:var(--stop)">FALLBACK_QUOTA</td><td class="r mono" style="color:var(--ok)">−$14.20</td></tr>
+        <tr><td class="mono">Aug 28 11:03</td><td class="mono">/katz:prd · requirements</td>
+          <td><span class="chip co"><i class="sw o3"></i>opus·high</span></td><td><span class="chip co"><i class="sw o3"></i>opus·high</span></td>
+          <td class="mono" style="color:var(--faint)">STAY_CONTINUITY</td><td class="r mono">—</td></tr>
+      </tbody>
+    </table>
+    <div style="font-size:12px;color:var(--faint);margin-top:9px">
+      The <span class="mono" style="color:var(--stop)">FALLBACK_QUOTA</span> row is the failure that started all of this — except now it fell back automatically and told you.
+    </div>
+  </div>
+</div>
+
+<!-- ============ 5. WORKBENCH ============ -->
+<div class="note" data-n="5" style="display:none">
+  <div><h4>What it is</h4><p>The <b>authoring surface</b> for both <b>personas and workflows</b>. Left nav toggles. Insights slide out on demand.</p></div>
+  <div><h4>When it wins</h4><p>Tuning. And seeing <b>where effort is actually set</b> — that lives on the workflow stage, not the persona.</p></div>
+  <div><h4>Cost</h4><p><span class="pill s">S–M</span> personas · <span class="pill xl">XL</span> workflow editing. Ship personas first.</p></div>
+</div>
+
+<div class="pane" data-p="5">
+  <div class="wb">
+    <!-- LEFT NAV -->
+    <div class="card" style="padding:11px">
+      <div class="seg2" style="margin-bottom:12px">
+        <span class="on" id="tgP">Personas</span><span id="tgW">Workflows</span>
+      </div>
+
+      <div id="listP">
+        <div class="sub" style="padding:0 8px">plugin core · 9</div>
+        <div class="plist">
+          <div class="row"><div class="av o4">A</div><span class="nm">Akira</span><span class="ct">14</span></div>
+          <div class="row"><div class="av s3">S</div><span class="nm">Sasha</span><span class="ct">9</span></div>
+          <div class="row"><div class="av o3">R</div><span class="nm">River</span><span class="ct">18</span></div>
+          <div class="row on"><div class="av o3">T</div><span class="nm">Toni</span><span class="ct">11</span></div>
+          <div class="row"><div class="av o3">K</div><span class="nm">Kai</span><span class="ct">7</span></div>
+          <div class="row"><div class="av s2">R</div><span class="nm">Robin</span><span class="ct">4</span></div>
+          <div class="row"><div class="av o2">I</div><span class="nm">Iris</span><span class="ct">2</span></div>
+          <div class="row"><div class="av o3">Q</div><span class="nm">Quinn</span><span class="ct">1</span></div>
+          <div class="row"><div class="av h3">C</div><span class="nm">Casey</span><span class="ct">1</span></div>
+        </div>
+        <div class="sub" style="padding:10px 8px 0;border-top:1px solid var(--line);margin-top:8px">
+          project cast · 5 <span style="color:var(--faint)">· Nightgrid</span></div>
+      </div>
+
+      <div id="listW" style="display:none">
+        <div class="sub" style="padding:0 8px">workflows · 12</div>
+        <div class="plist">
+          <div class="row"><span class="nm mono" style="font-size:12px">/katz:brief</span><span class="ct">3</span></div>
+          <div class="row on"><span class="nm mono" style="font-size:12px">/katz:feature</span><span class="ct">8</span></div>
+          <div class="row"><span class="nm mono" style="font-size:12px">/katz:prd</span><span class="ct">6</span></div>
+          <div class="row"><span class="nm mono" style="font-size:12px">/katz:panel</span><span class="ct">9</span></div>
+          <div class="row"><span class="nm mono" style="font-size:12px">/katz:brand-guide</span><span class="ct">2</span></div>
+          <div class="row"><span class="nm mono" style="font-size:12px">/katz:roadmap</span><span class="ct">4</span></div>
+          <div class="row"><span class="nm mono" style="font-size:12px">/katz:gtm</span><span class="ct">2</span></div>
+          <div class="row"><span class="nm mono" style="font-size:12px">/katz:market-research</span><span class="ct">6</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EDITOR: PERSONA -->
+    <div class="card" id="edP">
+      <div style="display:flex;align-items:center;gap:11px;margin-bottom:15px">
+        <div class="av o3" style="width:34px;height:34px;font-size:14px">T</div>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:640">Toni</div>
+          <div style="font-size:12px;color:var(--faint)">Product Marketing Manager · <span class="mono">agents/toni.md</span></div>
+        </div>
+        <span style="font-size:11.5px;color:var(--warn);margin-right:4px">● unsaved</span>
+        <button class="btn ghost" onclick="openDrawer()">Insights ›</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px">
+        <div class="field"><label>Model floor</label>
+          <div class="seg2"><span>Haiku</span><span>Sonnet</span><span class="on">Opus 5</span><span>Fable</span></div>
+        </div>
+        <div class="field"><label>Default effort <span style="text-transform:none;letter-spacing:0;color:var(--faint);font-weight:400">— stages may override</span></label>
+          <div class="effortsel" style="padding-top:4px">
+            <i class="o1" title="low"></i><i class="o2" title="medium"></i><i class="o3 on" title="high"></i>
+            <i class="o4" title="xhigh"></i><i class="o5" title="max"></i>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px">
+        <div class="field"><label>Budget ceiling</label><input class="input mono" value="maxBudgetUsd: 5.00"></div>
+        <div class="field"><label>Tools</label><input class="input mono" value="Read, Grep, WebSearch, Write"></div>
+      </div>
+
+      <div class="field">
+        <label>Profile body <span style="text-transform:none;letter-spacing:0;color:var(--faint);font-weight:400">— the part that measurably works</span></label>
+        <textarea class="input mono"># Toni — Product Marketing Manager
+
+Positioning, messaging, GTM strategy, competitive intelligence.
+
+## Constraints
+- A release note is **80 words or fewer.** No exceptions.
+- Lead with what changed for the user, never the feature name.
+- Every claim must trace to a shipped behavior you verified.
+- Name the competitor you are positioning against, explicitly.</textarea>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn">Save &amp; show diff</button>
+        <button class="btn ghost">Revert</button>
+        <div style="flex:1"></div>
+        <span style="font-size:11.5px;color:var(--ok)">✓ frontmatter valid</span>
+      </div>
+    </div>
+
+    <!-- EDITOR: WORKFLOW -->
+    <div class="card" id="edW" style="display:none">
+      <div style="display:flex;align-items:center;gap:11px;margin-bottom:6px">
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:640" class="mono">/katz:feature</div>
+          <div style="font-size:12px;color:var(--faint)">6 stages · <span class="mono">workflows/feature.js</span></div>
+        </div>
+        <button class="btn ghost" onclick="openDrawer()">Insights ›</button>
+      </div>
+      <div class="sub" style="margin-bottom:10px">Stage · owner · model floor · <b style="color:var(--dim)">effort set here</b></div>
+
+      <div class="stagerow"><div class="stagenum">1</div>
+        <div><b>Plan</b><div style="font-size:11px;color:var(--faint)">plan mode + slices + contract</div></div>
+        <div style="display:flex;align-items:center;gap:7px"><div class="av o3" style="width:21px;height:21px;font-size:9px">A</div>Akira</div>
+        <div class="effortsel"><i class="o1"></i><i class="o2"></i><i class="o3"></i><i class="o4"></i><i class="o5 on"></i></div>
+      </div>
+      <div class="stagerow"><div class="stagenum">2</div>
+        <div><b>Design</b><div style="font-size:11px;color:var(--faint)">conditional · UI surface only</div></div>
+        <div style="display:flex;align-items:center;gap:7px"><div class="av o3" style="width:21px;height:21px;font-size:9px">K</div>Kai</div>
+        <div class="effortsel"><i class="o1"></i><i class="o2"></i><i class="o3 on"></i><i class="o4"></i><i class="o5"></i></div>
+      </div>
+      <div class="stagerow"><div class="stagenum">3</div>
+        <div><b>Build</b><div style="font-size:11px;color:var(--faint)">parallel · one persona per slice</div></div>
+        <div style="font-size:12px;color:var(--faint)">per slice</div>
+        <div class="effortsel"><i class="s1"></i><i class="s2"></i><i class="s3 on"></i><i class="s4"></i><i class="s5"></i></div>
+      </div>
+      <div class="stagerow"><div class="stagenum">4</div>
+        <div><b>Verify</b><div style="font-size:11px;color:var(--faint)">different persona + tier · real oracle</div></div>
+        <div style="font-size:12px;color:var(--faint)">cross-assigned</div>
+        <div class="effortsel"><i class="s1"></i><i class="s2"></i><i class="s3"></i><i class="s4 on"></i><i class="s5"></i></div>
+      </div>
+      <div class="stagerow"><div class="stagenum">5</div>
+        <div><b>Merge</b><div style="font-size:11px;color:var(--faint)">sequential · base suite gates</div></div>
+        <div style="font-size:12px;color:var(--faint)">—</div>
+        <div style="font-size:11px;color:var(--faint)">n/a</div>
+      </div>
+      <div class="stagerow"><div class="stagenum">6</div>
+        <div><b>Content</b><div style="font-size:11px;color:var(--faint)">conditional · user-visible only</div></div>
+        <div style="display:flex;align-items:center;gap:7px"><div class="av o3" style="width:21px;height:21px;font-size:9px">T</div>Toni</div>
+        <div class="effortsel"><i class="o1"></i><i class="o2 on"></i><i class="o3"></i><i class="o4"></i><i class="o5"></i></div>
+      </div>
+
+      <div class="warnbox" style="margin-top:14px">
+        <b>Effort lives here, not on the persona.</b> Sasha builds a static page at <span class="mono">medium</span> and a dynamic one at <span class="mono">high</span> — same persona, same model, no context rebuild.
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;margin-top:13px">
+        <button class="btn">Save &amp; show diff</button>
+        <button class="btn ghost">View JS</button>
+        <div style="flex:1"></div>
+        <span style="font-size:11.5px;color:var(--faint)">XL — deferred to v3</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h3>Colour system</h3><div class="sub">hue = model · shade = effort · darker = more effort</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;font-size:11.5px;color:var(--dim)">
+      <div><b style="color:var(--fable-3)">Fable 5.1</b><div style="display:flex;gap:3px;margin-top:5px">
+        <i class="sw f1" style="width:26px;height:20px"></i><i class="sw f2" style="width:26px;height:20px"></i>
+        <i class="sw f3" style="width:26px;height:20px"></i><i class="sw f4" style="width:26px;height:20px"></i>
+        <i class="sw f5" style="width:26px;height:20px"></i></div></div>
+      <div><b style="color:var(--opus-3)">Opus 5</b><div style="display:flex;gap:3px;margin-top:5px">
+        <i class="sw o1" style="width:26px;height:20px"></i><i class="sw o2" style="width:26px;height:20px"></i>
+        <i class="sw o3" style="width:26px;height:20px"></i><i class="sw o4" style="width:26px;height:20px"></i>
+        <i class="sw o5" style="width:26px;height:20px"></i></div></div>
+      <div><b style="color:var(--sonnet-3)">Sonnet 5</b><div style="display:flex;gap:3px;margin-top:5px">
+        <i class="sw s1" style="width:26px;height:20px"></i><i class="sw s2" style="width:26px;height:20px"></i>
+        <i class="sw s3" style="width:26px;height:20px"></i><i class="sw s4" style="width:26px;height:20px"></i>
+        <i class="sw s5" style="width:26px;height:20px"></i></div></div>
+      <div><b style="color:var(--haiku-3)">Haiku 4.5</b><div style="display:flex;gap:3px;margin-top:5px">
+        <i class="sw h1" style="width:26px;height:20px"></i><i class="sw h2" style="width:26px;height:20px"></i>
+        <i class="sw h3" style="width:26px;height:20px"></i><i class="sw h4" style="width:26px;height:20px"></i>
+        <i class="sw h5" style="width:26px;height:20px"></i></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:5px;
+      font:10px var(--mono);color:var(--faint)">
+      <div>low · med · high · xhigh · max</div><div>low · med · high · xhigh · max</div>
+      <div>low · med · high · xhigh · max</div><div>low · med · high · xhigh · max</div>
+    </div>
+    <div style="font-size:12px;color:var(--faint);margin-top:11px;border-top:1px solid var(--line);padding-top:10px">
+      One glance answers both questions: <b style="color:var(--dim)">what is this costing</b> (hue) and <b style="color:var(--dim)">how hard is it thinking</b> (shade). A dark purple block is Fable at max — the most expensive thing that can appear on screen.
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE-OUT -->
+<div id="scrim" onclick="closeDrawer()"></div>
+<div id="drawer">
+  <button class="x" onclick="closeDrawer()">×</button>
+  <h3 style="margin:0 0 2px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint)">Toni · 30 days</h3>
+  <div style="margin:10px 0 14px">
+    <div class="big" style="font-size:22px">11 <small>runs</small></div>
+    <div class="delta" style="color:var(--faint)">$21.40 · 890K tokens</div>
+  </div>
+  <table style="font-size:12px">
+    <tr><td style="color:var(--faint)">Used by</td><td class="r mono">4 workflows</td></tr>
+    <tr><td style="color:var(--faint)">Gate pass</td><td class="r mono" style="color:var(--ok)">91%</td></tr>
+    <tr><td style="color:var(--faint)">Avg cost/run</td><td class="r mono">$1.95</td></tr>
+    <tr><td style="color:var(--faint)">Escalations</td><td class="r mono">2</td></tr>
+  </table>
+  <div class="sub" style="margin:14px 0 6px;padding-top:12px;border-top:1px solid var(--line)">Appears in</div>
+  <div style="font:11.5px var(--mono);color:var(--dim);line-height:2">
+    /katz:gtm<br>/katz:panel<br>/katz:market-research<br>/katz:feature · content
+  </div>
+  <div class="sub" style="margin:14px 0 6px;padding-top:12px;border-top:1px solid var(--line)">Effort actually used</div>
+  <div style="display:flex;gap:3px;align-items:flex-end;height:44px">
+    <div style="flex:1;text-align:center"><div class="o1" style="height:6px;border-radius:2px"></div><div style="font:9px var(--mono);color:var(--faint);margin-top:3px">low</div></div>
+    <div style="flex:1;text-align:center"><div class="o2" style="height:22px;border-radius:2px"></div><div style="font:9px var(--mono);color:var(--faint);margin-top:3px">med</div></div>
+    <div style="flex:1;text-align:center"><div class="o3" style="height:34px;border-radius:2px"></div><div style="font:9px var(--mono);color:var(--faint);margin-top:3px">high</div></div>
+    <div style="flex:1;text-align:center"><div class="o4" style="height:10px;border-radius:2px"></div><div style="font:9px var(--mono);color:var(--faint);margin-top:3px">xhi</div></div>
+    <div style="flex:1;text-align:center"><div class="o5" style="height:3px;border-radius:2px"></div><div style="font:9px var(--mono);color:var(--faint);margin-top:3px">max</div></div>
+  </div>
+  <div class="warnbox" style="margin-top:16px;font-size:11.5px">
+    Changing the model floor affects <b>4 workflows</b>. The diff will list them.
+  </div>
+</div>
+
+<script>
+  var tabs = document.querySelectorAll('.tab');
+  tabs.forEach(function(t){
+    t.addEventListener('click', function(){
+      var p = t.getAttribute('data-p');
+      tabs.forEach(function(x){ x.classList.toggle('on', x === t); });
+      document.querySelectorAll('.pane').forEach(function(x){ x.classList.toggle('on', x.getAttribute('data-p') === p); });
+      document.querySelectorAll('.note').forEach(function(x){ x.style.display = x.getAttribute('data-n') === p ? 'grid' : 'none'; });
+      closeDrawer();
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
+  });
+
+  // run selection
+  document.querySelectorAll('.run').forEach(function(r){
+    r.addEventListener('click', function(){
+      document.querySelectorAll('.run').forEach(function(x){ x.classList.toggle('on', x === r); });
+    });
+  });
+
+  // personas / workflows toggle
+  var tgP = document.getElementById('tgP'), tgW = document.getElementById('tgW');
+  function mode(isP){
+    tgP.classList.toggle('on', isP); tgW.classList.toggle('on', !isP);
+    document.getElementById('listP').style.display = isP ? '' : 'none';
+    document.getElementById('listW').style.display = isP ? 'none' : '';
+    document.getElementById('edP').style.display = isP ? '' : 'none';
+    document.getElementById('edW').style.display = isP ? 'none' : '';
+    closeDrawer();
+  }
+  tgP.addEventListener('click', function(){ mode(true); });
+  tgW.addEventListener('click', function(){ mode(false); });
+
+  // list selection
+  document.querySelectorAll('.plist .row').forEach(function(r){
+    r.addEventListener('click', function(){
+      var p = r.parentNode;
+      p.querySelectorAll('.row').forEach(function(x){ x.classList.toggle('on', x === r); });
+    });
+  });
+
+  // effort selector
+  document.querySelectorAll('.effortsel').forEach(function(s){
+    s.querySelectorAll('i').forEach(function(i){
+      i.addEventListener('click', function(){
+        s.querySelectorAll('i').forEach(function(x){ x.classList.toggle('on', x === i); });
+      });
+    });
+  });
+
+  function openDrawer(){ document.getElementById('drawer').classList.add('on'); document.getElementById('scrim').classList.add('on'); }
+  function closeDrawer(){ document.getElementById('drawer').classList.remove('on'); document.getElementById('scrim').classList.remove('on'); }
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeDrawer(); });
+</script>
+</body>
+</html>

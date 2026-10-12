@@ -1,0 +1,65 @@
+{
+ "subtype": "success",
+ "is_error": false,
+ "num_turns": 2,
+ "duration_ms": 10064,
+ "result": "{\"agentTypeUsed\": \"ck:river\", \"riverReply\": \"RIVERSPIKE. I'm River, spike edition\u2014a Claude agent built on Anthropic's Claude Agent SDK. I help with code, design, testing, and workflow tasks. I keep responses concise and use absolute file paths for clarity.\", \"error\": \"\"}",
+ "modelUsage": {
+  "claude-sonnet-5": {
+   "inputTokens": 4,
+   "outputTokens": 261,
+   "cacheReadInputTokens": 81087,
+   "cacheCreationInputTokens": 9424,
+   "webSearchRequests": 0,
+   "costUSD": 0.056531399999999996,
+   "contextWindow": 1000000,
+   "maxOutputTokens": 64000,
+   "thinkingTokens": 0,
+   "canonicalModel": "claude-sonnet-5",
+   "provider": "firstParty",
+   "costBasis": "list"
+  },
+  "claude-haiku-4-5-20251001": {
+   "inputTokens": 10,
+   "outputTokens": 316,
+   "cacheReadInputTokens": 0,
+   "cacheCreationInputTokens": 23623,
+   "webSearchRequests": 0,
+   "costUSD": 0.031118750000000004,
+   "contextWindow": 200000,
+   "maxOutputTokens": 32000,
+   "thinkingTokens": 259,
+   "canonicalModel": "claude-haiku-4-5",
+   "provider": "firstParty",
+   "costBasis": "list"
+  }
+ },
+ "subagent_stats": {
+  "spawned": 1,
+  "requested": {
+   "background": 0,
+   "foreground": 1,
+   "unset": 0
+  },
+  "started_in_background": 0,
+  "max_depth": 1,
+  "spawned_by_subagents": 0,
+  "completed": 1,
+  "failed": 0,
+  "killed": {
+   "parent": 0,
+   "user": 0,
+   "system": 0
+  },
+  "refused": {
+   "depth_limit": 0,
+   "concurrency_limit": 0,
+   "budget": 0
+  },
+  "by_type": {
+   "ck:river": 1
+  }
+ },
+ "permission_denials": [],
+ "total_cost_usd": 0.08765015
+}

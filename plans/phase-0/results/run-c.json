@@ -1,0 +1,49 @@
+{
+ "subtype": "success",
+ "is_error": false,
+ "num_turns": 4,
+ "duration_ms": 18663,
+ "result": "```json\n{\n  \"nameAttempt\": \"worked\",\n  \"scriptPathUsed\": false,\n  \"consentPromptSeen\": \"not observable\",\n  \"workflowResult\": {\n    \"nested\": null,\n    \"nestedError\": \"workflow({scriptPath: '/tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/ck/workflows/panel-spike.js'}): scriptPath must be a script path this tool returned, or a file you can already read (the working directory or a directory you have added): /tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/ck/workflows/panel-spike.js\",\n    \"pluginRootSeen\": \"/tmp/claude-0/-home-user--github/ae604898-06d4-57f5-9db7-1f318e478554/scratchpad/spikes/ck\"\n  },\n  \"notes\": \"Step 1 (name: 'ck:draft-spike') launched successfully, so step 2 (scriptPath invocation from this session) was skipped per instructions. The outer workflow itself ran and completed, but internally it tried to launch a nested workflow via Workflow({scriptPath: '.../ck/workflows/panel-spike.js'}) and that nested call failed with the error captured in nestedError above (scriptPath must be a tool-returned path or an already-readable file). No agents were spawned (agent_count: 0, tool_uses: 0), so there was no opportunity to observe any consent prompt.\"\n}\n```",
+ "modelUsage": {
+  "claude-sonnet-5": {
+   "inputTokens": 8,
+   "outputTokens": 1237,
+   "cacheReadInputTokens": 176868,
+   "cacheCreationInputTokens": 11031,
+   "webSearchRequests": 0,
+   "costUSD": 0.09188360000000001,
+   "contextWindow": 1000000,
+   "maxOutputTokens": 64000,
+   "thinkingTokens": 429,
+   "canonicalModel": "claude-sonnet-5",
+   "provider": "firstParty",
+   "costBasis": "list"
+  }
+ },
+ "subagent_stats": {
+  "spawned": 0,
+  "requested": {
+   "background": 0,
+   "foreground": 0,
+   "unset": 0
+  },
+  "started_in_background": 0,
+  "max_depth": 0,
+  "spawned_by_subagents": 0,
+  "completed": 0,
+  "failed": 0,
+  "killed": {
+   "parent": 0,
+   "user": 0,
+   "system": 0
+  },
+  "refused": {
+   "depth_limit": 0,
+   "concurrency_limit": 0,
+   "budget": 0
+  },
+  "by_type": {}
+ },
+ "permission_denials": [],
+ "total_cost_usd": 0.09188360000000001
+}
